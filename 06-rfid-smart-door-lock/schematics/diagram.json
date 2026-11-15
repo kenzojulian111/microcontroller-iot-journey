@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_valid",
+      "top": 10,
+      "left": -160,
+      "attrs": { "color": "green", "label": "Tap Kartu Master (Valid)" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_denied",
+      "top": 95,
+      "left": -160,
+      "attrs": { "color": "red", "label": "Tap Kartu Asing (Ditolak)" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": -105,
+      "left": -120,
+      "attrs": { "volume": "0.2" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": -40,
+      "left": 215,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_solenoid",
+      "top": -60,
+      "left": 380,
+      "attrs": { "color": "cyan", "label": "Solenoid Door Lock" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_sol",
+      "top": -15,
+      "left": 360,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_green",
+      "top": 70,
+      "left": 240,
+      "attrs": { "color": "green", "label": "Akses Diterima" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_green",
+      "top": 115,
+      "left": 215,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_red",
+      "top": 70,
+      "left": 330,
+      "attrs": { "color": "red", "label": "Akses Ditolak" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_red",
+      "top": 115,
+      "left": 305,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:D32", "btn_valid:1.r", "green", [ "h0" ] ],
+    [ "esp:GND.2", "btn_valid:2.r", "black", [ "h0" ] ],
+    [ "esp:D33", "btn_denied:1.r", "red", [ "h0" ] ],
+    [ "esp:GND.2", "btn_denied:2.r", "black", [ "h0" ] ],
+    [ "esp:GND.2", "bz1:1", "black", [ "h0" ] ],
+    [ "esp:D14", "bz1:2", "yellow", [ "h0" ] ],
+    [ "esp:VIN", "relay1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay1:GND", "black", [ "h0" ] ],
+    [ "esp:D26", "relay1:IN", "cyan", [ "h0" ] ],
+    [ "esp:3V3", "relay1:COM", "orange", [ "h0" ] ],
+    [ "relay1:NO", "r_sol:1", "cyan", [ "h0" ] ],
+    [ "r_sol:2", "led_solenoid:A", "cyan", [ "h0" ] ],
+    [ "led_solenoid:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D25", "r_green:1", "green", [ "h0" ] ],
+    [ "r_green:2", "led_green:A", "green", [ "h0" ] ],
+    [ "led_green:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D27", "r_red:1", "red", [ "h0" ] ],
+    [ "r_red:2", "led_red:A", "red", [ "h0" ] ],
+    [ "led_red:C", "esp:GND.1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

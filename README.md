@@ -13,27 +13,27 @@ Fokus pada pembacaan data sensor, kontrol aktuator via jaringan lokal, dan pengi
 | No | Proyek | Board Rekomendasi | Tech Stack & Protokol | Status |
 | :--- | :--- | :--- | :--- | :---: |
 | **01** | [Web-Controlled Smart Switch](./01-web-smart-switch/) | ESP8266 / ESP32 | C++ (Arduino), HTML/CSS, `WebServer` / `ESP8266WebServer` | Completed |
-| **02** | [Real-Time Weather & Room Monitor](./02-weather-room-monitor/) | ESP8266 / ESP32 | I2C, DHT22/BME280, OLED SSD1306, Blynk / ThingSpeak | Planned |
-| **03** | [Smart Plant Watering System](./03-smart-plant-watering/) | ESP8266 / ESP32 | ADC (Soil Moisture), Relay, HTTP POST, Telegram Bot / Discord Webhook | Planned |
+| **02** | [Real-Time Weather & Room Monitor](./02-weather-room-monitor/) | ESP8266 / ESP32 | I2C, DHT22/BME280, OLED SSD1306, Blynk / ThingSpeak | Completed |
+| **03** | [Smart Plant Watering System](./03-smart-plant-watering/) | ESP8266 / ESP32 | ADC (Soil Moisture), Relay, HTTP POST, Telegram Bot / Discord Webhook | Completed |
 
 ### Level 2: Intermediate (Protokol IoT, Database & Integrasi)
 Fokus pada protokol komunikasi standar industri (MQTT), penyimpanan data historis, dan *dashboard* kustom.
 
 | No | Proyek | Board Rekomendasi | Tech Stack & Protokol | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| **04** | [MQTT Home Automation Hub](./04-mqtt-home-automation/) | ESP32 + ESP8266 | MQTT (Mosquitto), `PubSubClient`, Node-RED / Home Assistant | Planned |
-| **05** | [Smart Energy Meter](./05-smart-energy-meter/) | ESP32 | UART (PZEM-004T) / ADC (ACS712), InfluxDB, Grafana | Planned |
-| **06** | [RFID / Biometric Smart Door Lock](./06-rfid-smart-door-lock/) | ESP32 | SPI (RC522) / UART (Fingerprint), REST API, PostgreSQL / Firebase | Planned |
+| **04** | [MQTT Home Automation Hub](./04-mqtt-home-automation/) | ESP32 + ESP8266 | MQTT (Mosquitto), `PubSubClient`, Node-RED / Home Assistant | Completed |
+| **05** | [Smart Energy Meter](./05-smart-energy-meter/) | ESP32 | UART (PZEM-004T) / ADC (ACS712), InfluxDB, Grafana | Completed |
+| **06** | [RFID / Biometric Smart Door Lock](./06-rfid-smart-door-lock/) | ESP32 | SPI (RC522) / UART (Fingerprint), REST API, PostgreSQL / Firebase | Completed |
 
 ### Level 3: Advance (Edge Computing, OTA, Keamanan & Mesh)
 Fokus pada keandalan sistem skala produksi, pemrosesan di perangkat (*edge*), dan komunikasi jarak jauh tanpa Wi-Fi.
 
 | No | Proyek | Board Rekomendasi | Tech Stack & Protokol | Status |
 | :--- | :--- | :--- | :--- | :---: |
-| **07** | [OTA Firmware Update & Fleet Manager](./07-ota-firmware-manager/) | ESP32 / ESP8266 | `ArduinoOTA` / `HTTPUpdate`, HTTPS, GitHub Releases | Planned |
-| **08** | [LoRa Mesh Environmental Telemetry](./08-lora-mesh-telemetry/) | ESP32 (Node & Gateway) | SPI, LoRa SX1278 / RFM95, Mesh Routing, Gateway Forwarding | Planned |
-| **09** | [Edge AI Anomaly Detection (TinyML)](./09-edge-ai-anomaly-detection/) | ESP32 | I2C (MPU6050), Edge Impulse, TensorFlow Lite for Microcontrollers | Planned |
-| **10** | [Secure End-to-End Encrypted Telemetry](./10-secure-tls-telemetry/) | ESP32 | MQTTS (TLS/SSL), Sertifikat X.509, AWS IoT Core / HiveMQ Cloud | Planned |
+| **07** | [OTA Firmware Update & Fleet Manager](./07-ota-firmware-manager/) | ESP32 / ESP8266 | `ArduinoOTA` / `HTTPUpdate`, HTTPS, GitHub Releases | Completed |
+| **08** | [LoRa Mesh Environmental Telemetry](./08-lora-mesh-telemetry/) | ESP32 (Node & Gateway) | SPI, LoRa SX1278 / RFM95, Mesh Routing, Gateway Forwarding | Completed |
+| **09** | [Edge AI Anomaly Detection (TinyML)](./09-edge-ai-anomaly-detection/) | ESP32 | I2C (MPU6050), Edge Impulse, TensorFlow Lite for Microcontrollers | Completed |
+| **10** | [Secure End-to-End Encrypted Telemetry](./10-secure-tls-telemetry/) | ESP32 | MQTTS (TLS/SSL), Sertifikat X.509, AWS IoT Core / HiveMQ Cloud | Completed |
 
 ---
 
