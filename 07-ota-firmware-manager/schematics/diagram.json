@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnOta",
+      "top": 60,
+      "left": -140,
+      "attrs": { "color": "blue", "label": "Check OTA Update" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledHeartbeat",
+      "top": -40,
+      "left": 180,
+      "attrs": { "color": "cyan", "label": "Status / Heartbeat" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledFlash",
+      "top": 50,
+      "left": 180,
+      "attrs": { "color": "yellow", "label": "OTA Flashing" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 5,
+      "left": 165,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 95,
+      "left": 165,
+      "attrs": { "value": "220" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:D14", "btnOta:1.r", "blue", [ "h0" ] ],
+    [ "esp:GND.2", "btnOta:2.r", "black", [ "h0" ] ],
+    [ "esp:D2", "r1:1", "cyan", [ "h0" ] ],
+    [ "r1:2", "ledHeartbeat:A", "cyan", [ "h0" ] ],
+    [ "ledHeartbeat:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D26", "r2:1", "yellow", [ "h0" ] ],
+    [ "r2:2", "ledFlash:A", "yellow", [ "h0" ] ],
+    [ "ledFlash:C", "esp:GND.1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

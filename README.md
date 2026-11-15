@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Embedded IoT Lab (`IoT_lab`)
 
 Repositori portofolio dan laboratorium pembelajaran **Internet of Things (IoT)** berbasis mikrokontroler (**ESP32** & **ESP8266**) menggunakan **Arduino IDE**. Proyek disusun secara bertahap dari tingkat pemula (*Easy*), menengah (*Intermediate*), hingga mahir (*Advance*).
@@ -67,3 +68,6 @@ IoT_lab/
    - Cari dan instal `esp8266` by ESP8266 Community.
 4. **Manajemen Kredensial Aman:**
    - Simpan SSID Wi-Fi, password, dan API token di file `secrets.h` (sudah masuk di `.gitignore` agar tidak ter-*commit* ke publik) dan sediakan `secrets.example.h` sebagai template.
+=======
+# microcontroller-iot-journey
+>>>>>>> ec69ddecb49b843b7790f0e9c4af4a2814ccc5aa

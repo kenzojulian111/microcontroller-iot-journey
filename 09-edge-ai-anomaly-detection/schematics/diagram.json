@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu",
+      "top": -110,
+      "left": -20,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnMode",
+      "top": 60,
+      "left": -140,
+      "attrs": { "color": "blue", "label": "Simulasi Getaran" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledNormal",
+      "top": -40,
+      "left": 180,
+      "attrs": { "color": "green", "label": "Normal / Idle" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledAnomaly",
+      "top": 40,
+      "left": 180,
+      "attrs": { "color": "red", "label": "Anomaly Detected!" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 5,
+      "left": 165,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 85,
+      "left": 165,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": 110,
+      "left": 175,
+      "attrs": { "volume": "0.1" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "imu:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "imu:GND", "black", [ "h0" ] ],
+    [ "esp:D21", "imu:SDA", "cyan", [ "h0" ] ],
+    [ "esp:D22", "imu:SCL", "purple", [ "h0" ] ],
+    [ "esp:D14", "btnMode:1.r", "blue", [ "h0" ] ],
+    [ "esp:GND.2", "btnMode:2.r", "black", [ "h0" ] ],
+    [ "esp:D26", "r1:1", "green", [ "h0" ] ],
+    [ "r1:2", "ledNormal:A", "green", [ "h0" ] ],
+    [ "ledNormal:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D27", "r2:1", "red", [ "h0" ] ],
+    [ "r2:2", "ledAnomaly:A", "red", [ "h0" ] ],
+    [ "ledAnomaly:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D25", "bz1:2", "orange", [ "h0" ] ],
+    [ "esp:GND.1", "bz1:1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

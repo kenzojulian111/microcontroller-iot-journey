@@ -1,0 +1,64 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_soil",
+      "top": 20,
+      "left": -155,
+      "attrs": {
+        "value": "2800"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay_pump",
+      "top": 10,
+      "left": 195,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_pump",
+      "top": -15,
+      "left": 355,
+      "attrs": {
+        "color": "cyan",
+        "label": "Pompa Air DC"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 35,
+      "left": 340,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "pot_soil:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "pot_soil:GND", "black", [ "h0" ] ],
+    [ "esp:D34", "pot_soil:SIG", "yellow", [ "h0" ] ],
+    [ "esp:VIN", "relay_pump:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay_pump:GND", "black", [ "h0" ] ],
+    [ "esp:D26", "relay_pump:IN", "green", [ "h0" ] ],
+    [ "esp:3V3", "relay_pump:COM", "orange", [ "h0" ] ],
+    [ "relay_pump:NO", "r1:1", "cyan", [ "h0" ] ],
+    [ "r1:2", "led_pump:A", "cyan", [ "h0" ] ],
+    [ "led_pump:C", "esp:GND.1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

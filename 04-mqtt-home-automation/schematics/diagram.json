@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -110,
+      "left": -140,
+      "attrs": { "temperature": "27.4", "humidity": "65.0" }
+    },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pir1",
+      "top": 20,
+      "left": -150,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 135,
+      "left": -140,
+      "attrs": { "color": "green", "label": "Manual Override" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": 10,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 35,
+      "left": 355,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -10,
+      "left": 370,
+      "attrs": { "color": "yellow", "label": "Lampu Teras / Ruangan" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:3V3", "dht1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "dht1:GND", "black", [ "h0" ] ],
+    [ "esp:D4", "dht1:SDA", "cyan", [ "h0" ] ],
+    [ "esp:VIN", "pir1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "pir1:GND", "black", [ "h0" ] ],
+    [ "esp:D27", "pir1:OUT", "orange", [ "h0" ] ],
+    [ "esp:D14", "btn1:1.r", "yellow", [ "h0" ] ],
+    [ "esp:GND.2", "btn1:2.r", "black", [ "h0" ] ],
+    [ "esp:VIN", "relay1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay1:GND", "black", [ "h0" ] ],
+    [ "esp:D26", "relay1:IN", "green", [ "h0" ] ],
+    [ "esp:3V3", "relay1:COM", "orange", [ "h0" ] ],
+    [ "relay1:NO", "r1:1", "green", [ "h0" ] ],
+    [ "r1:2", "led1:A", "green", [ "h0" ] ],
+    [ "led1:C", "esp:GND.1", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}
