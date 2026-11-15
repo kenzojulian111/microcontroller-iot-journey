@@ -1,4 +1,4 @@
-# Arduino / Build Artifacts
+# Arduino / Embedded Build Artifacts
 *.bin
 *.elf
 *.hex
@@ -11,13 +11,24 @@
 build/
 .arduino15/
 
-# Secret Credentials (Jangan commit kredensial Wi-Fi, API Key, atau Sertifikat Privat!)
+# Secret Credentials & Cryptographic Keys (Never commit to version control)
 *secrets.h
 *credentials.h
 *.pem
 *.key
 *.der
 .env
+
+# Python / Flask Virtual Environments & Artifacts (Projects 19-25)
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+*.sqlite3
+*.db
+instance/
 
 # OS & Editor Files
 .DS_Store
