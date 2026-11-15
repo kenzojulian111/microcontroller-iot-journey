@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "author": "IoT_lab",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": -40,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay2",
+      "top": 80,
+      "left": 210,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -60,
+      "left": 370,
+      "attrs": { "color": "green", "label": "Lampu Utama" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led2",
+      "top": 60,
+      "left": 370,
+      "attrs": { "color": "cyan", "label": "Kipas / Exhaust" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": -15,
+      "left": 355,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r2",
+      "top": 105,
+      "left": 355,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": 30,
+      "left": -130,
+      "attrs": { "color": "green", "label": "Tombol Ch 1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": 110,
+      "left": -130,
+      "attrs": { "color": "blue", "label": "Tombol Ch 2" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:VIN", "relay1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay1:GND", "black", [ "h0" ] ],
+    [ "esp:D26", "relay1:IN", "green", [ "h0" ] ],
+    [ "esp:VIN", "relay2:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay2:GND", "black", [ "h0" ] ],
+    [ "esp:D27", "relay2:IN", "cyan", [ "h0" ] ],
+    [ "esp:3V3", "relay1:COM", "orange", [ "h0" ] ],
+    [ "relay1:NO", "r1:1", "green", [ "h0" ] ],
+    [ "r1:2", "led1:A", "green", [ "h0" ] ],
+    [ "led1:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:3V3", "relay2:COM", "orange", [ "h0" ] ],
+    [ "relay2:NO", "r2:1", "cyan", [ "h0" ] ],
+    [ "r2:2", "led2:A", "cyan", [ "h0" ] ],
+    [ "led2:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D14", "btn1:1.r", "yellow", [ "h0" ] ],
+    [ "esp:GND.2", "btn1:2.r", "black", [ "h0" ] ],
+    [ "esp:D12", "btn2:1.r", "purple", [ "h0" ] ],
+    [ "esp:GND.2", "btn2:2.r", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

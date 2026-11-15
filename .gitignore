@@ -1,0 +1,27 @@
+# Arduino / Build Artifacts
+*.bin
+*.elf
+*.hex
+*.map
+*.o
+*.d
+*.eep
+*.lss
+*.sym
+build/
+.arduino15/
+
+# Secret Credentials (Jangan commit kredensial Wi-Fi, API Key, atau Sertifikat Privat!)
+*secrets.h
+*credentials.h
+*.pem
+*.key
+*.der
+.env
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+*.swp
+*~
