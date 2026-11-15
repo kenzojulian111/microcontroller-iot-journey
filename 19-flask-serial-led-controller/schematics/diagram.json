@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "author": "IoT Lab Track III",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 40,
+      "left": 20,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": -60,
+      "left": 330,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "pwm_led",
+      "top": 60,
+      "left": 350,
+      "attrs": { "color": "cyan" }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 120,
+      "left": 340,
+      "attrs": { "value": "220" }
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servo1",
+      "top": 170,
+      "left": 340,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "uno:5V", "relay1:VCC", "red", [ "v0" ] ],
+    [ "uno:GND.1", "relay1:GND", "black", [ "v0" ] ],
+    [ "uno:4", "relay1:IN", "green", [ "v0" ] ],
+    [ "uno:5", "r1:1", "cyan", [ "v0" ] ],
+    [ "r1:2", "pwm_led:A", "cyan", [ "v0" ] ],
+    [ "pwm_led:C", "uno:GND.2", "black", [ "v0" ] ],
+    [ "uno:9", "servo1:PWM", "orange", [ "v0" ] ],
+    [ "uno:5V", "servo1:V+", "red", [ "v0" ] ],
+    [ "uno:GND.2", "servo1:GND", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

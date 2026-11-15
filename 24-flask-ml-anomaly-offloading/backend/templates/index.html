@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 24 — Server-Side ML Anomaly Offloading</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="badge-tag">PROJECT 24</span>
+      <div>
+        <h1>Server-Side Machine Learning Inference Offloading</h1>
+        <p class="subtitle">MPU6050 Vibration + MQ-135 Gas &bull; Scikit-Learn IsolationForest + RandomForest &bull; Closed-Loop Relay Trip</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" onclick="retrainPipeline()">Retrain Scikit-Learn Pipeline</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Top KPI Row -->
+    <section class="metrics-grid">
+      <article class="metric-card">
+        <span class="metric-label">Active Actuator Directive</span>
+        <strong class="metric-value" id="kpi-command">NORMAL</strong>
+        <span class="metric-foot" id="kpi-class">Predicted Class: NOMINAL</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">IsolationForest Anomaly Score</span>
+        <strong class="metric-value accent-blue" id="kpi-score">0.00</strong>
+        <span class="metric-foot">Normalized [0.00 = Inlier, 1.00 = Outlier]</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">RandomForest Test F1-Score</span>
+        <strong class="metric-value accent-green" id="kpi-f1">--</strong>
+        <span class="metric-foot" id="kpi-samples">Trained on -- synthetic vectors</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Inference Latency</span>
+        <strong class="metric-value" id="kpi-latency">-- ms</strong>
+        <span class="metric-foot">Server-side vector evaluation</span>
+      </article>
+    </section>
+
+    <section class="split-grid">
+      <!-- Left: Synthetic Edge Feature Vector Injector -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Edge MCU Feature Vector Simulator (`TURBINE-NODE-04`)</h2>
+          <span class="mono-pill">POST /api/v1/ml/infer</span>
+        </div>
+        <p class="panel-desc">
+          Inject realistic 6-dimensional MPU6050 + MQ-135 feature vectors to verify closed-loop Scikit-Learn classification and emergency contactor trip behavior.
+        </p>
+
+        <div class="preset-grid">
+          <button class="btn btn-success" onclick="injectPreset('nominal')">
+            1. Nominal Baseline (0.14g RMS)
+          </button>
+          <button class="btn btn-warning" onclick="injectPreset('bearing')">
+            2. Bearing Raceway Spall (0.84g RMS)
+          </button>
+          <button class="btn btn-danger" onclick="injectPreset('thermal')">
+            3. Thermal + VOC Gas Surge (82°C)
+          </button>
+          <button class="btn btn-danger" onclick="injectPreset('cavitation')">
+            4. Cavitation Severe Surge (1.95g RMS)
+          </button>
+        </div>
+
+        <div class="probability-bars" id="prob-bars"></div>
+      </div>
+
+      <!-- Right: Random Forest Feature Importance & Retraining -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>RandomForest Gini Feature Importances</h2>
+          <span class="mono-pill">POST /api/v1/model/retrain</span>
+        </div>
+        <p class="panel-desc">
+          Relative contribution of each sensor feature extracted by the microcontroller across the 140 decision trees in the ensemble.
+        </p>
+        <div class="importance-list" id="importance-list"></div>
+        <p id="retrain-status" class="feedback-msg"></p>
+      </div>
+    </section>
+
+    <!-- Live Inference Stream Table -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Real-Time Closed-Loop Inference Stream</h2>
+        <span class="mono-pill">Auto-Refresh 2.5s</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>UTC Time</th>
+              <th>Node ID</th>
+              <th>Vib RMS (g)</th>
+              <th>Vib P2P (g)</th>
+              <th>Crest Factor</th>
+              <th>Temp (°C)</th>
+              <th>Gas Ratio</th>
+              <th>Predicted Fault Class</th>
+              <th>Confidence</th>
+              <th>Anomaly Score</th>
+              <th>Closed-Loop Command</th>
+            </tr>
+          </thead>
+          <tbody id="history-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const PRESETS = {
+      nominal:    { node_id: 'TURBINE-NODE-04', vib_rms_g: 0.14, vib_p2p_g: 0.39, crest_factor: 1.84, temp_c: 42.1, gas_ppm_ratio: 1.04, motor_rpm: 1785 },
+      bearing:    { node_id: 'TURBINE-NODE-04', vib_rms_g: 0.84, vib_p2p_g: 2.28, crest_factor: 3.62, temp_c: 56.4, gas_ppm_ratio: 1.28, motor_rpm: 1680 },
+      thermal:    { node_id: 'TURBINE-NODE-04', vib_rms_g: 0.66, vib_p2p_g: 1.72, crest_factor: 2.42, temp_c: 82.3, gas_ppm_ratio: 3.48, motor_rpm: 1450 },
+      cavitation: { node_id: 'TURBINE-NODE-04', vib_rms_g: 1.95, vib_p2p_g: 4.55, crest_factor: 4.15, temp_c: 73.5, gas_ppm_ratio: 2.55, motor_rpm: 1180 }
+    };
+
+    async function injectPreset(key) {
+      const payload = PRESETS[key];
+      await fetch('/api/v1/ml/infer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      await refreshStatus();
+    }
+
+    async function retrainPipeline() {
+      const statusEl = document.getElementById('retrain-status');
+      statusEl.textContent = 'Retraining IsolationForest + RandomForest ensemble...';
+      const res = await fetch('/api/v1/model/retrain', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ samples_per_class: 450 })
+      });
+      const data = await res.json();
+      statusEl.textContent = `Retrained in ${data.metrics.train_time_ms} ms — Macro F1: ${data.metrics.macro_f1}`;
+      await refreshStatus();
+    }
+
+    function cmdBadgeClass(cmd) {
+      if (cmd === 'CRITICAL_SHUTDOWN') return 'pill-critical';
+      if (cmd === 'WARNING_THROTTLE') return 'pill-warning';
+      return 'pill-normal';
+    }
+
+    async function refreshStatus() {
+      try {
+        const res = await fetch('/api/v1/ml/status');
+        const data = await res.json();
+
+        document.getElementById('kpi-f1').textContent = data.model_metrics.macro_f1;
+        document.getElementById('kpi-samples').textContent =
+          `Trained on ${data.model_metrics.total_samples} synthetic vectors (${data.model_metrics.train_time_ms} ms)`;
+
+        if (data.latest) {
+          const cmdEl = document.getElementById('kpi-command');
+          cmdEl.textContent = data.latest.command;
+          cmdEl.className = 'metric-value ' + (
+            data.latest.command === 'CRITICAL_SHUTDOWN' ? 'accent-red' :
+            data.latest.command === 'WARNING_THROTTLE' ? 'accent-amber' : 'accent-green'
+          );
+          document.getElementById('kpi-class').textContent =
+            `Predicted Class: ${data.latest.predicted_class} (${(data.latest.confidence * 100).toFixed(1)}%)`;
+          document.getElementById('kpi-score').textContent = data.latest.anomaly_score.toFixed(3);
+          document.getElementById('kpi-latency').textContent = `${data.latest.latency_ms} ms`;
+
+          const probs = data.latest.probabilities || {};
+          document.getElementById('prob-bars').innerHTML = Object.entries(probs).map(([label, p]) => `
+            <div class="bar-row">
+              <div class="bar-label">
+                <span>${label}</span>
+                <span class="mono">${(p * 100).toFixed(1)}%</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${(p * 100).toFixed(1)}%"></div>
+              </div>
+            </div>
+          `).join('');
+        }
+
+        const imps = data.model_metrics.feature_importances || {};
+        document.getElementById('importance-list').innerHTML = Object.entries(imps).map(([fname, val]) => `
+          <div class="bar-row">
+            <div class="bar-label">
+              <span class="mono">${fname}</span>
+              <span class="mono">${(val * 100).toFixed(1)}%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill fill-green" style="width:${Math.min(100, val * 220).toFixed(1)}%"></div>
+            </div>
+          </div>
+        `).join('');
+
+        const tbody = document.getElementById('history-tbody');
+        tbody.innerHTML = data.history.map(item => `
+          <tr>
+            <td class="mono">${item.timestamp}</td>
+            <td class="mono">${item.node_id}</td>
+            <td class="mono">${item.features.vib_rms_g.toFixed(3)}</td>
+            <td class="mono">${item.features.vib_p2p_g.toFixed(2)}</td>
+            <td class="mono">${item.features.crest_factor.toFixed(2)}</td>
+            <td class="mono">${item.features.temp_c.toFixed(1)}</td>
+            <td class="mono">${item.features.gas_ppm_ratio.toFixed(2)}</td>
+            <td><strong>${item.predicted_class}</strong></td>
+            <td class="mono">${(item.confidence * 100).toFixed(1)}%</td>
+            <td class="mono">${item.anomaly_score.toFixed(3)}</td>
+            <td><span class="status-pill ${cmdBadgeClass(item.command)}">${item.command}</span></td>
+          </tr>
+        `).join('');
+      } catch (e) {
+        console.error('Status poll failed:', e);
+      }
+    }
+
+    refreshStatus();
+    setInterval(refreshStatus, 2500);
+  </script>
+</body>
+</html>

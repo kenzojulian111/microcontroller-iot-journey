@@ -1,44 +1,44 @@
-# Panduan Deployment OTA (Local Push & Cloud Pull Server)
+# OTA Deployment Guide (Local Push & Cloud Pull Release Server) — 07 OTA Firmware Manager
 
-Dokumen ini menjelaskan cara menguji kedua metode pembaruan firmware tanpa kabel USB (**Over-The-Air**) yang diimplementasikan pada [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino).
+This document provides step-by-step operational procedures for testing both wireless firmware update workflows implemented in [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino).
 
 ---
 
-## 1. Metode 1: Local Push OTA langsung dari Arduino IDE
+## 1. Method 1: Local Push OTA Directly from Arduino IDE
 
-Metode ini digunakan saat laptop Anda dan perangkat ESP32/ESP8266 berada di jaringan Wi-Fi (LAN) yang sama.
+Use this workflow during active development when your workstation and the target ESP32/ESP8266 share the same local Wi-Fi subnet (LAN).
 
-### Langkah-langkah:
-1. Untuk pertama kali, unggah sketch [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino) menggunakan **kabel USB** seperti biasa.
-2. Buka **Serial Monitor (`115200` baud)** dan catat alamat IP serta Hostname mDNS yang muncul:
+### Step-by-Step Procedure:
+1. Perform the **initial flash** of [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino) over a physical **USB cable**.
+2. Open the **Serial Monitor (`115200` baud)** and record the assigned IPv4 address and mDNS hostname:
    ```text
    [WIFI] Alamat IP Diagnostik : http://192.168.1.55
    [LOCAL-OTA] Siap menerima Push OTA di Hostname: esp-ota-node-01.local
    ```
-3. Lepaskan kabel USB dan nyalakan ESP32 menggunakan adaptor daya / powerbank.
-4. Di **Arduino IDE**, buka menu **`Tools > Port`**. Di bawah bagian **Network Ports**, pilih:
+3. Disconnect the USB cable from your computer and power the ESP32 from an external 5V USB wall adapter or battery pack.
+4. In **Arduino IDE**, navigate to **`Tools > Port`**. Under the **Network Ports** section, select:
    `esp-ota-node-01 at 192.168.1.55`
-5. Ubah sesuatu di kode (misal ubah `FIRMWARE_VERSION` menjadi `"1.0.1"`), lalu klik tombol **Upload**.
-6. Saat diminta password, masukkan nilai `OTA_PASSWORD` dari `secrets.h` (default: `admin-ota-rahasia`).
+5. Modify the firmware (for example, increment `FIRMWARE_VERSION` to `"1.0.1"`), then click **Upload**.
+6. When prompted for an authentication password, enter the `OTA_PASSWORD` defined in `secrets.h` (default: `admin-ota-rahasia`).
 
 ---
 
-## 2. Metode 2: Cloud Pull HTTP OTA (`version.json` + Binary `.bin`)
+## 2. Method 2: Cloud Pull HTTP OTA (`version.json` + Compiled `.bin`)
 
-Metode ini digunakan untuk memperbarui ratusan perangkat IoT di lapangan secara otomatis cukup dengan mengunggah file binary ke web server atau GitHub Releases.
+Use this workflow to roll out automated updates across an entire fleet of deployed IoT nodes by publishing a release manifest and binary artifact to an HTTP/HTTPS server or GitHub Releases.
 
-### Langkah A — Mengekspor File Binary (`.bin`) dari Arduino IDE
-1. Buka [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino) di Arduino IDE.
-2. Naikkan nomor versi pada baris:
+### Step A — Exporting the Compiled Binary (`.bin`)
+1. Open [`ota_firmware_manager.ino`](../src/ota_firmware_manager/ota_firmware_manager.ino) in Arduino IDE.
+2. Increment the semantic version string:
    ```cpp
    const char* FIRMWARE_VERSION = "1.1.0";
    ```
-3. Klik menu **`Sketch > Export Compiled Binary`** (atau tekan `Ctrl + Alt + S`).
-4. Arduino IDE akan membuat folder `build/` di dalam folder sketch yang berisi file binary bernama:
+3. Select **`Sketch > Export Compiled Binary`** (or press `Ctrl + Alt + S`).
+4. Arduino IDE generates a `build/` directory inside the sketch folder containing the compiled firmware image:
    `ota_firmware_manager.ino.bin`
 
-### Langkah B — Membuat File Manifest `version.json`
-Buat sebuah folder di laptop Anda (misalnya `ota_server/`), salin file `ota_firmware_manager.ino.bin` ke dalamnya, lalu buat file `version.json` dengan isi berikut:
+### Step B — Authoring the Release Manifest (`version.json`)
+Create a release directory on your workstation (e.g., `ota_server/`), copy `ota_firmware_manager.ino.bin` into it, and create a `version.json` file with the following schema:
 
 ```json
 {
@@ -47,28 +47,28 @@ Buat sebuah folder di laptop Anda (misalnya `ota_server/`), salin file `ota_firm
   "notes": "Optimasi manajemen memori & perbaikan interval telemetri"
 }
 ```
-*(Ganti `192.168.1.100` dengan alamat IP laptop/server Anda di jaringan Wi-Fi).*
+*(Replace `192.168.1.100` with the LAN IPv4 address of your host machine).*
 
-### Langkah C — Menjalankan Server HTTP untuk Pengujian
-Buka terminal di dalam folder `ota_server/` yang berisi `version.json` dan `ota_firmware_manager.ino.bin`, lalu jalankan server HTTP Python satu baris:
+### Step C — Launching the HTTP Artifact Server
+Open a terminal inside the `ota_server/` directory containing both `version.json` and `ota_firmware_manager.ino.bin`, and start a lightweight HTTP server:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Pastikan URL di `secrets.h` pada ESP32 mengarah ke `http://<IP_LAPTOP>:8000/version.json`.
+Ensure `VERSION_MANIFEST_URL` in the ESP32's `secrets.h` points to `http://<YOUR_HOST_IP>:8000/version.json`.
 
-### Langkah D — Memicu Update
-Anda dapat memicu pemeriksaan update dengan 3 cara:
-1. **Tekan Tombol Fisik** pada `GPIO 14`.
-2. **Buka Web Dashboard** di `http://<IP_ESP32>/` lalu klik tombol hijau **"Check for Update Now"**.
-3. **Biarkan Otomatis**: Perangkat akan memeriksa server setiap interval `AUTO_CHECK_INTERVAL_MS`.
+### Step D — Triggering the Fleet Update
+You can initiate the Cloud Pull OTA check via three mechanisms:
+1. **Hardware Push Button:** Press the tactile button wired to `GPIO 14`.
+2. **Web Fleet Console:** Navigate to `http://<ESP32_IP>/` in a browser and click **"Check for Update Now"**.
+3. **Autonomous Periodic Timer:** Wait for the non-blocking scheduler (`AUTO_CHECK_INTERVAL_MS`) to poll the manifest automatically.
 
 ---
 
-## 3. Contoh Output Serial Monitor (`115200` baud)
+## 3. UART Serial Monitor Output (`115200` baud)
 
-Berikut adalah tampilan log lengkap di Serial Monitor saat perangkat mendeteksi versi baru (`v1.1.0`) di server, mengunduh binary, mem-flash partisi `app1`, dan me-reboot dirinya sendiri:
+The following UART log captures a complete Cloud Pull OTA lifecycle: the node running `v1.0.0` on partition `app0 (0x10000)` discovers `v1.1.0` on the release server, streams the 814 KB binary into partition `app1 (0x150000)`, flips the boot partition pointer, and reboots into `v1.1.0`:
 
 ```text
 ============================================
@@ -112,4 +112,5 @@ rst:0xc (SW_CPU_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
   Partisi Berjalan: app1 (0x150000)
 ============================================
 ```
-Perhatikan bahwa setelah reboot, **Firmware Aktif** otomatis berubah menjadi `v1.1.0` dan **Partisi Berjalan** berpindah dari `app0 (0x10000)` ke `app1 (0x150000)`!
+
+Notice that immediately after the software reset (`SW_CPU_RESET`), the active firmware reports `v1.1.0` and the executing flash partition has cleanly transitioned from `app0 (0x10000)` to `app1 (0x150000)`.

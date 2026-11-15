@@ -1,4 +1,4 @@
-# Embedded Systems, TinyML & Full-Stack IoT Engineering Lab (`IoT_lab`)
+# Microcontroller IoT Journey — Embedded Systems, TinyML & Full-Stack IoT Lab (`microcontroller-iot-journey`)
 
 A structured, production-oriented monorepo documenting **25 progressive Embedded Systems, Industrial IoT, On-Device TinyML, and Hybrid Full-Stack (MCU + Python Flask) projects**. Designed for **ESP32 / ESP32-S3**, **ESP8266**, and **AVR (Arduino Uno/Nano)** architectures using the **Arduino Core Framework**, **TensorFlow Lite for Microcontrollers (TFLM)**, and **Python Flask**.
 
@@ -80,20 +80,20 @@ flowchart TD
 
 | ID | Project Directory | Target MCU | Peripherals & Buses | ML Architecture & Embedded Stack | Status |
 | :---: | :--- | :--- | :--- | :--- | :---: |
-| **11** | `11-ml-local-weather-predictor` | ESP32 | BME280 (Temperature, Humidity, Barometric Pressure via I2C) | Barometric Pressure Derivative ($\Delta P / \Delta t$) Feature Window, `Scikit-Learn` Random Forest / Decision Tree ported to C++ via `micromlgen` / `emlearn` | Planned |
-| **12** | `12-ml-electronic-nose-gas` | ESP32 | Multi-Gas Sensor Array (MQ-135, MQ-2, BME680 VOC Sensor) | Multi-Channel ADC Normalization, Edge Impulse Fully Connected Neural Network (FCNN) Odor/VOC Classifier, MQTT Alerting | Planned |
-| **13** | `13-ml-air-gesture-controller` | ESP32 / ESP32-S3 | MPU6050 6-Axis Accelerometer & Gyroscope (I2C Fast Mode 400 kHz) | 6-DoF Sliding Window Tensor, TensorFlow Lite for Microcontrollers (TFLM) Continuous Gesture Classifier | Planned |
-| **14** | `14-ml-motor-anomaly-detector` | ESP32 | ADXL345 / MPU6050 Digital Accelerometer (SPI / I2C) | FFT Spectral Binning, Unsupervised K-Means Clustering / Autoencoder Reconstruction Error for Bearing Fault Detection | Planned |
+| **11** | [`11-ml-local-weather-predictor`](./11-ml-local-weather-predictor/) | ESP32 | BME280 (Temperature, Humidity, Barometric Pressure via I2C) | Barometric Pressure Derivative ($\Delta P / \Delta t$) Feature Window, `Scikit-Learn` Random Forest / Decision Tree ported to C++ via `micromlgen` / `emlearn` | Completed |
+| **12** | [`12-ml-electronic-nose-gas`](./12-ml-electronic-nose-gas/) | ESP32 | Multi-Gas Sensor Array (MQ-135, MQ-2, BME680 VOC Sensor) | Multi-Channel ADC Normalization, Edge Impulse Fully Connected Neural Network (FCNN) Odor/VOC Classifier, MQTT Alerting | Completed |
+| **13** | [`13-ml-air-gesture-controller`](./13-ml-air-gesture-controller/) | ESP32 / ESP32-S3 | MPU6050 6-Axis Accelerometer & Gyroscope (I2C Fast Mode 400 kHz) | 6-DoF Sliding Window Tensor, TensorFlow Lite for Microcontrollers (TFLM) Continuous Gesture Classifier | Completed |
+| **14** | [`14-ml-motor-anomaly-detector`](./14-ml-motor-anomaly-detector/) | ESP32 | ADXL345 / MPU6050 Digital Accelerometer (SPI / I2C) | FFT Spectral Binning, Unsupervised K-Means Clustering / Autoencoder Reconstruction Error for Bearing Fault Detection | Completed |
 
 #### Phase 5: Advanced Edge AI — Audio DSP, Embedded Computer Vision & Edge MLOps
 *Focus: I2S DMA audio capture, Mel-Frequency Cepstral Coefficients (MFCC), quantized `INT8` Convolutional Neural Networks, and dynamic `.tflite` model hot-swapping over LittleFS.*
 
 | ID | Project Directory | Target MCU | Peripherals & Buses | ML Architecture & Embedded Stack | Status |
 | :---: | :--- | :--- | :--- | :--- | :---: |
-| **15** | `15-edge-offline-voice-command` | ESP32 / ESP32-S3 | INMP441 Omnidirectional MEMS Microphone (I2S DMA Bus) | 16 kHz I2S PCM Capture, On-Device MFCC Spectrogram Extraction, Quantized `INT8` 1D/2D-CNN Keyword Spotting (TFLM) | Planned |
-| **16** | `16-esp32s3-vision-object-counter` | ESP32-S3 / ESP32-CAM | OV2640 Camera Sensor (DVP Parallel Interface + PSRAM) | Edge Impulse FOMO (*Faster Objects, More Objects*) / Quantized `INT8` MobileNetV2, Real-Time Centroid Tracking & Counting | Planned |
-| **17** | `17-ml-energy-disaggregation-nilm` | ESP32 | SCT-013 Non-Invasive Current Transformer / PZEM-004T | High-Frequency Current Transient & Harmonic Signature Extraction, 1D-CNN / Lightweight LSTM Non-Intrusive Load Monitoring (NILM) | Planned |
-| **18** | `18-ota-tflite-model-updater` | ESP32 | Onboard SPI Flash partitioned with `LittleFS` / `SPIFFS` | Decoupled TFLM Arena & Dynamic `.tflite` FlatBuffer Loader from `LittleFS`, HTTPS Model Binary Fetching without Firmware Reflash | Planned |
+| **15** | [`15-edge-offline-voice-command`](./15-edge-offline-voice-command/) | ESP32 / ESP32-S3 | INMP441 Omnidirectional MEMS Microphone (I2S DMA Bus) | 16 kHz I2S PCM Capture, On-Device MFCC Spectrogram Extraction, Quantized `INT8` 1D/2D-CNN Keyword Spotting (TFLM) | Completed |
+| **16** | [`16-esp32s3-vision-object-counter`](./16-esp32s3-vision-object-counter/) | ESP32-S3 / ESP32-CAM | OV2640 Camera Sensor (DVP Parallel Interface + PSRAM) | Edge Impulse FOMO (*Faster Objects, More Objects*) / Quantized `INT8` MobileNetV2, Real-Time Centroid Tracking & Counting | Completed |
+| **17** | [`17-ml-energy-disaggregation-nilm`](./17-ml-energy-disaggregation-nilm/) | ESP32 | SCT-013 Non-Invasive Current Transformer / PZEM-004T | High-Frequency Current Transient & Harmonic Signature Extraction, 1D-CNN / Lightweight LSTM Non-Intrusive Load Monitoring (NILM) | Completed |
+| **18** | [`18-ota-tflite-model-updater`](./18-ota-tflite-model-updater/) | ESP32 | Onboard SPI Flash partitioned with `LittleFS` / `SPIFFS` | Decoupled TFLM Arena & Dynamic `.tflite` FlatBuffer Loader from `LittleFS`, HTTPS Model Binary Fetching without Firmware Reflash | Completed |
 
 ---
 
@@ -104,25 +104,25 @@ flowchart TD
 
 | ID | Project Directory | Target Hardware | Peripherals & Interface | Firmware & Backend Stack | Status |
 | :---: | :--- | :--- | :--- | :--- | :---: |
-| **19** | `19-flask-serial-led-controller` | Arduino Uno / Nano / ESP32 | PWM LED Array, SG90 Servo Motor, Relay Module (UART USB) | ASCII Command Parser (`.ino`), Python Flask, `pyserial` Thread-Safe Serial Singleton, Responsive Control UI | Planned |
-| **20** | `20-flask-serial-sensor-logger` | Arduino Uno / Nano / ESP32 | DHT11 / LM35 Temperature Sensor (UART 115200 bps) | Background Serial Poller Thread, Flask REST Endpoints, SQLite3 Time-Series Persistence, Dynamic CSV Stream Export | Planned |
+| **19** | [`19-flask-serial-led-controller`](./19-flask-serial-led-controller/) | Arduino Uno / Nano / ESP32 | PWM LED Array, SG90 Servo Motor, Relay Module (UART USB) | ASCII Command Parser (`.ino`), Python Flask, `pyserial` Thread-Safe Serial Singleton, Responsive Control UI | Completed |
+| **20** | [`20-flask-serial-sensor-logger`](./20-flask-serial-sensor-logger/) | Arduino Uno / Nano / ESP32 | DHT11 / LM35 Temperature Sensor (UART 115200 bps) | Background Serial Poller Thread, Flask REST Endpoints, SQLite3 Time-Series Persistence, Dynamic CSV Stream Export | Completed |
 
 #### Phase 7: Wireless RESTful Telemetry & Bi-Directional WebSockets (ESP + Flask)
 *Focus: Token-authenticated HTTP REST ingestion, low-latency full-duplex event synchronization via WebSockets (`Flask-SocketIO`), and ORM-backed access control.*
 
 | ID | Project Directory | Target Hardware | Peripherals & Interface | Firmware & Backend Stack | Status |
 | :---: | :--- | :--- | :--- | :--- | :---: |
-| **21** | `21-flask-rest-api-weather-station` | ESP32 / ESP8266 | BME280 Environmental Sensor (I2C), Wi-Fi Station | `HTTPClient` JSON POST with `X-API-Key` Auth Header, Flask RESTful Blueprint, SQLite/SQLAlchemy, Interactive `Chart.js` Frontend | Planned |
-| **22** | `22-flask-socketio-realtime-hub` | ESP32 | Tactile Interrupt Buttons, Relay Actuators, Wi-Fi | WebSocket Client (`WebSocketsClient`), `Flask-SocketIO` Event Loop, Sub-50ms Bi-Directional State Synchronization | Planned |
-| **23** | `23-flask-rfid-attendance-system` | ESP32 / ESP8266 | MFRC522 RFID (SPI), SSD1306 OLED (I2C), Piezo Buzzer | UID Verification via Flask REST API, `Flask-SQLAlchemy` User & Attendance ORM, Admin Audit Dashboard, OLED Response Rendering | Planned |
+| **21** | [`21-flask-rest-api-weather-station`](./21-flask-rest-api-weather-station/) | ESP32 / ESP8266 | BME280 Environmental Sensor (I2C), Wi-Fi Station | `HTTPClient` JSON POST with `X-API-Key` Auth Header, Flask RESTful Blueprint, SQLite/SQLAlchemy, Interactive `Chart.js` Frontend | Completed |
+| **22** | [`22-flask-socketio-realtime-hub`](./22-flask-socketio-realtime-hub/) | ESP32 | Tactile Interrupt Buttons, Relay Actuators, Wi-Fi | WebSocket Client (`WebSocketsClient`), `Flask-SocketIO` Event Loop, Sub-50ms Bi-Directional State Synchronization | Completed |
+| **23** | [`23-flask-rfid-attendance-system`](./23-flask-rfid-attendance-system/) | ESP32 / ESP8266 | MFRC522 RFID (SPI), SSD1306 OLED (I2C), Piezo Buzzer | UID Verification via Flask REST API, `Flask-SQLAlchemy` User & Attendance ORM, Admin Audit Dashboard, OLED Response Rendering | Completed |
 
 #### Phase 8: Edge-to-Server AI & Computer Vision Offloading (MCU + Flask + ML/CV)
 *Focus: Offloading compute-intensive anomaly detection (`Scikit-Learn`) and real-time video stream processing (`OpenCV`) from memory-constrained MCUs to a Python inference server.*
 
 | ID | Project Directory | Target Hardware | Peripherals & Interface | Firmware & Backend Stack | Status |
 | :---: | :--- | :--- | :--- | :--- | :---: |
-| **24** | `24-flask-ml-anomaly-offloading` | Arduino / ESP32 | MPU6050 IMU (I2C) + MQ-135 Gas Sensor (ADC) | Raw Telemetry Streaming (UART/HTTP), Flask Inference Engine (`Scikit-Learn` Isolation Forest / Random Forest), Closed-Loop Actuator Trip | Planned |
-| **25** | `25-flask-opencv-arduino-gate` | Arduino Uno / ESP32-CAM | SG90/MG996R Gate Servo, Status Indicators, Camera Feed | Flask MJPEG Video Streaming, `OpenCV` (`cv2`) Face Recognition / QR Code Decoder, Serial/HTTP Servo Gate Actuation & Image Audit Log | Planned |
+| **24** | [`24-flask-ml-anomaly-offloading`](./24-flask-ml-anomaly-offloading/) | Arduino / ESP32 | MPU6050 IMU (I2C) + MQ-135 Gas Sensor (ADC) | Raw Telemetry Streaming (UART/HTTP), Flask Inference Engine (`Scikit-Learn` Isolation Forest / Random Forest), Closed-Loop Actuator Trip | Completed |
+| **25** | [`25-flask-opencv-arduino-gate`](./25-flask-opencv-arduino-gate/) | Arduino Uno / ESP32-CAM | SG90/MG996R Gate Servo, Status Indicators, Camera Feed | Flask MJPEG Video Streaming, `OpenCV` (`cv2`) Face Recognition / QR Code Decoder, Serial/HTTP Servo Gate Actuation & Image Audit Log | Completed |
 
 ---
 

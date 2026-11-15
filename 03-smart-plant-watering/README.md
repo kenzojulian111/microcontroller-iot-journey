@@ -1,69 +1,102 @@
-# 03 - Smart Plant Watering System (Automated & Notified)
+# 03 — Closed-Loop Smart Plant Irrigation System (Hysteresis Control & HTTPS Webhooks)
 
-**Level:** Intermediate  
-**Board:** ESP32 & ESP8266 (Otomatis menyesuaikan melalui preprocessor `#ifdef`)
-
----
-
-## Deskripsi Proyek
-Proyek ketiga ini membangun **Sistem Penyiram Tanaman Otomatis Pintar** yang menjaga kelembapan media tanam secara mandiri dan mengirimkan laporan langsung ke ponsel pengguna:
-1. **Akuisisi Sensor Kelembapan Tanah dengan Moving Average Filter:** Membaca **Capacitive Soil Moisture Sensor** melalui pin ADC, meredam fluktuasi sinyal analog dengan teknik *multi-sampling* dan rata-rata bergerak (*moving average* 8 sampel), lalu memetakannya ke skala `0% – 100%`.
-2. **Kontrol Pompa Berbasis Histeresis:** Mencegah relay bergetar (*chattering*) di sekitar satu titik ambang dengan memisahkan ambang batas menyala (`< 35%`) dan ambang batas mati (`>= 65%`).
-3. **Proteksi Keamanan Ganda (*Anti-Overwatering & Cooldown*):** Membatasi durasi maksimum pompa menyala (`15 detik` per siklus) dan menerapkan waktu tunggu resapan air (*cooldown* `30 detik`) agar tanah tidak banjir jika air membutuhkan waktu untuk meresap ke area sensor.
-4. **Notifikasi Real-Time via HTTPS:** Mengirimkan pemberitahuan otomatis ke **Telegram Bot API** dan/atau **Discord Webhook** setiap kali pompa mulai menyiram dan selesai menyiram.
+**Difficulty Level:** Intermediate (ADC Moving-Average Filtering, Dual-Threshold Hysteresis FSM & HTTPS REST Notifications)  
+**Target Architectures:** Espressif ESP32 (12-bit SAR ADC) & ESP8266 (10-bit SAR ADC)
 
 ---
 
-## Fitur Utama
-- **Dual-Architecture Ready:** Kode yang sama dapat langsung di-*compile* untuk **ESP32** (`GPIO 34` ADC 12-bit) maupun **ESP8266** (`A0` ADC 10-bit).
-- **Pembacaan Stabil & Terkalibrasi:** Dilengkapi konstanta `ADC_DRY_VALUE` dan `ADC_WET_VALUE` yang mudah disesuaikan dengan hasil kalibrasi sensor di udara dan di dalam air.
-- **Tetap Bekerja Saat Offline:** Apabila Wi-Fi rumah sedang mati, logika otomatisasi pompa dan proteksi *anti-overwatering* tetap bekerja penuh menjaga tanaman.
-- **Tanpa Library Eksternal Tambahan:** Seluruh komunikasi HTTPS JSON ke Telegram dan Discord menggunakan library bawaan core board (`WiFiClientSecure` + `HTTPClient`).
+## 1. Architectural Overview & System Design
+
+This project implements an autonomous closed-loop soil moisture regulation system with multi-stage digital signal conditioning, hysteresis pump actuation, anti-flooding safety timers, and encrypted HTTPS push notifications to **Telegram Bot API** and **Discord Webhooks**.
+
+### Core Engineering Capabilities
+- **Two-Stage ADC Noise Rejection:** Analog capacitive soil sensors suffer from high-frequency power-supply ripple and soil-contact transients. The firmware applies a burst oversampling routine (8 sub-samples at `2 ms` intervals per reading) feeding an 8-tap circular **Moving Average Filter** before linear calibration mapping (`0%–100%`).
+- **Dual-Threshold Schmitt-Trigger Hysteresis:** Prevents relay contact chattering around a single setpoint by decoupling the turn-on threshold (`MOISTURE_LOW_THRESHOLD = 35%`) from the turn-off saturation threshold (`MOISTURE_HIGH_THRESHOLD = 65%`).
+- **Percolation Cooldown & Maximum Run-Time Interlocks:** Enforces a strict hardware run-time cap (`MAX_PUMP_DURATION_MS = 15,000 ms`) to prevent reservoir depletion or root flooding if the sensor is dislodged, followed by a mandatory soil percolation cooldown window (`PUMP_COOLDOWN_MS = 30,000 ms`) allowing water to diffuse evenly through the substrate before re-evaluating moisture.
+- **Zero-Dependency HTTPS Webhook Engine:** Dispatches real-time event alerts directly to `api.telegram.org` and Discord over TLS (`WiFiClientSecure` + `HTTPClient`) using only built-in core libraries.
 
 ---
 
-## Struktur File Proyek
+## 2. Hardware Bill of Materials (BOM) & Peripheral Interface Specs
+
+| Component | Quantity | Interface / Protocol | Electrical Specification | Notes |
+| :--- | :---: | :--- | :--- | :--- |
+| **ESP32 DevKit V1** *or* **ESP8266 NodeMCU** | 1 | SAR ADC + Digital GPIO + Wi-Fi | 3.3V logic (`5V` via USB `VIN`) | Main controller |
+| **Capacitive Soil Moisture Sensor v1.2 / v2.0** | 1 | Analog Voltage Output (`AOUT`) | 3.3V–5V DC (~5 mA); 1.2V–3.0V analog output | Corrosion-resistant capacitive sensing |
+| **1-Channel 5V Opto-Isolated Relay Module** | 1 | Digital GPIO Output | 5V DC coil (~70 mA); 10A contact rating | Switches DC power to submersible pump |
+| **Mini 5V DC Submersible Water Pump** | 1 | Relay Dry Contact (`COM`/`NO`) | 3V–5V DC, 300–600 mA inrush current | Inductive load; requires flyback diode |
+| **1N4007 / 1N5819 Flyback Diode** | 1 | Parallel across Pump Terminals | $V_{RRM} = 1000\text{V}$, $I_F = 1\text{A}$ | Clamps inductive back-EMF transients |
+
+### Pin Assignment Matrix
+
+| Functional Signal | Module Terminal | ESP32 GPIO | ESP8266 Pin (GPIO) | Electrical Configuration |
+| :--- | :--- | :---: | :---: | :--- |
+| **Soil Moisture Analog Out** | `AOUT` / `SIG` | `GPIO 34` (`ADC1_CH6`) | `A0` (`ADC0`) | High-impedance analog input |
+| **Water Pump Relay Driver** | `IN` | `GPIO 26` | `D1` (`GPIO 5`) | Push-pull digital output |
+| **Wi-Fi Status Indicator** | `LED_WIFI` | `GPIO 2` | `D4` (`GPIO 2`) | Onboard status LED |
+
+---
+
+## 3. Firmware Architecture & Non-Blocking State Machine Design
+
+The irrigation controller ([`smart_plant_watering.ino`](./src/smart_plant_watering/smart_plant_watering.ino)) operates as a three-state finite state machine (`STANDBY_MONITOR`, `MENYIRAM / PUMP_ACTIVE`, and `COOLDOWN_PERCOLATION`):
+
+```mermaid
+stateDiagram-v2
+    [*] --> STANDBY_MONITOR: Boot & Initialize 8-Tap Moving Average
+
+    STANDBY_MONITOR --> PUMP_ACTIVE: moisturePct < 35%\n[Energize Relay & Send HTTPS Start Alert]
+    
+    PUMP_ACTIVE --> COOLDOWN_PERCOLATION: moisturePct >= 65%\n(Target Reached)\n[De-energize Relay & Send HTTPS Summary]
+    PUMP_ACTIVE --> COOLDOWN_PERCOLATION: elapsed >= 15,000 ms\n(Safety Timeout Cutoff)\n[De-energize Relay & Send HTTPS Timeout Alert]
+
+    COOLDOWN_PERCOLATION --> STANDBY_MONITOR: cooldownElapsed >= 30,000 ms\n(Water Percolation Complete)
+```
+
+1. **ADC Resolution & Inverse Dielectric Mapping (`adcToMoisturePercent`):** Because water has a relative permittivity ($\varepsilon_r \approx 80$) much higher than dry soil ($\varepsilon_r \approx 3–5$), increased moisture increases sensor capacitance and **lowers** the output voltage of the 555-timer oscillator on the capacitive sensor board. The firmware maps `[ADC_DRY_VALUE .. ADC_WET_VALUE]` inversely onto `[0% .. 100%]` and clamps out-of-range values with `constrain()`.
+2. **Offline Autonomous Guarantee:** The hysteresis control loop (`evaluateWateringLogic`) executes every `2,000 ms` independently of network status. If Wi-Fi drops, pump actuation and safety cutoffs remain 100% functional while HTTPS notifications gracefully log `[NOTIFY] Wi-Fi belum terhubung`.
+
+---
+
+## 4. Directory Structure
 
 ```text
 03-smart-plant-watering/
-├── README.md                                  # Dokumentasi utama proyek ini
+├── README.md                                  # System architecture, BOM, FSM & build instructions
 ├── src/
 │   └── smart_plant_watering/
-│       ├── smart_plant_watering.ino           # Sketch utama Arduino (ESP32 & ESP8266)
-│       └── secrets.example.h                  # Template Wi-Fi, Token Bot Telegram & Discord
+│       ├── smart_plant_watering.ino           # Main firmware source (ESP32 & ESP8266)
+│       └── secrets.example.h                  # Wi-Fi, Telegram Bot Token & Discord Webhook template
 ├── schematics/
-│   ├── diagram.json                           # File rangkaian simulasi Wokwi
-│   └── wiring-guide.md                        # Tabel pinout, panduan kalibrasi ADC & dioda flyback
+│   ├── diagram.json                           # Wokwi circuit netlist (ESP32 + Potentiometer + Relay)
+│   └── wiring-guide.md                        # Pinout, 2-point ADC calibration & flyback diode protection
 └── docs/
-    └── notification-and-calibration.md        # Panduan @BotFather Telegram, Discord & log Serial
+    └── notification-and-calibration.md        # @BotFather setup, Discord Webhook & UART logs
 ```
 
 ---
 
-## Cara Menjalankan di Arduino IDE (Hardware Asli)
+## 5. Build, Flashing & Wokwi Simulation Instructions
 
-1. Buka folder [`src/smart_plant_watering/`](./src/smart_plant_watering/) lalu salin file [`secrets.example.h`](./src/smart_plant_watering/secrets.example.h) menjadi `secrets.h`:
+### A. Building & Flashing via Arduino IDE (Physical Hardware)
+1. Create your local credentials file from the template:
    ```bash
    cp src/smart_plant_watering/secrets.example.h src/smart_plant_watering/secrets.h
    ```
-2. Edit `secrets.h` dan masukkan:
-   - `WIFI_SSID` dan `WIFI_PASSWORD` jaringan Wi-Fi kamu.
-   - `TELEGRAM_BOT_TOKEN` dan `TELEGRAM_CHAT_ID` (ikuti panduan di [`docs/notification-and-calibration.md`](./docs/notification-and-calibration.md)), atau `DISCORD_WEBHOOK_URL`.
-3. Buka file [`smart_plant_watering.ino`](./src/smart_plant_watering/smart_plant_watering.ino) di **Arduino IDE**.
-4. Pilih board yang sesuai di menu `Tools > Board`:
-   - Untuk **ESP32**: Pilih `DOIT ESP32 DEVKIT V1` (atau varian ESP32 kamu).
-   - Untuk **ESP8266**: Pilih `NodeMCU 1.0 (ESP-12E Module)` atau `LOLIN(WEMOS) D1 R2 & mini`.
-5. Hubungkan sensor kelembapan tanah kapasitif, modul relay, dan pompa air sesuai panduan di [`schematics/wiring-guide.md`](./schematics/wiring-guide.md).
-6. Klik **Upload**, lalu buka **Serial Monitor** pada baud rate **`115200`**.
+2. Edit `src/smart_plant_watering/secrets.h` with your `WIFI_SSID`, `WIFI_PASSWORD`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, or `DISCORD_WEBHOOK_URL` (refer to [`docs/notification-and-calibration.md`](./docs/notification-and-calibration.md)).
+3. Open [`src/smart_plant_watering/smart_plant_watering.ino`](./src/smart_plant_watering/smart_plant_watering.ino) in **Arduino IDE**, select **DOIT ESP32 DEVKIT V1** or **NodeMCU 1.0 (ESP-12E Module)**, and upload.
+4. Perform the 2-point dry/wet calibration procedure documented in [`schematics/wiring-guide.md`](./schematics/wiring-guide.md).
 
----
+### B. Building & Flashing via Arduino CLI
+```bash
+# No external third-party libraries required (uses built-in WiFiClientSecure & HTTPClient)
+arduino-cli compile --fqbn esp32:esp32:esp32 src/smart_plant_watering
+arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32 src/smart_plant_watering
+```
 
-## Cara Menjalankan di Simulator Wokwi
-
-1. Tanpa membuat `secrets.h`, sketch secara otomatis menggunakan jaringan virtual `Wokwi-GUEST`.
-2. Buka [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp32) atau gunakan ekstensi **Wokwi for VS Code**.
-3. Salin isi [`smart_plant_watering.ino`](./src/smart_plant_watering/smart_plant_watering.ino) ke editor utama.
-4. Salin isi [`schematics/diagram.json`](./schematics/diagram.json) ke tab `diagram.json` di Wokwi, lalu jalankan simulasi.
-5. Putar **Potensiometer** (simulator tegangan analog sensor kelembapan tanah):
-   - Putar ke arah nilai ADC tinggi (`> 2600`) untuk mensimulasikan **tanah kering (< 35%)** dan melihat relay serta indikator pompa menyala.
-   - Putar ke arah nilai ADC rendah (`< 2000`) untuk mensimulasikan **tanah basah (>= 65%)** dan melihat pompa berhenti serta masuk ke mode *cooldown*.
+### C. Running in Wokwi Simulator
+1. Open the [Wokwi ESP32 Simulator](https://wokwi.com/projects/new/esp32) or **Wokwi for VS Code**.
+2. Load [`smart_plant_watering.ino`](./src/smart_plant_watering/smart_plant_watering.ino) and [`schematics/diagram.json`](./schematics/diagram.json), then start the simulation.
+3. Adjust the **Potentiometer** (which emulates the capacitive soil sensor analog voltage on `GPIO 34`):
+   - Rotate toward high ADC counts (`> 2600`) to simulate **dry soil (`< 35%`)** and trigger automatic pump actuation.
+   - Rotate toward low ADC counts (`< 2000`) to simulate **saturated soil (`>= 65%`)** and observe automatic pump shutoff and transition into the 30-second percolation cooldown state.

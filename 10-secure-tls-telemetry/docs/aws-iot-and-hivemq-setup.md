@@ -1,23 +1,23 @@
-# Panduan Konfigurasi AWS IoT Core (mTLS) & HiveMQ Cloud (TLS)
+# AWS IoT Core (mTLS X.509) & HiveMQ Cloud (TLS) Configuration Guide — 10 Secure TLS Telemetry
 
-Dokumen ini memandu Anda langkah demi langkah untuk menghubungkan [`secure_tls_telemetry.ino`](../src/secure_tls_telemetry/secure_tls_telemetry.ino) ke **AWS IoT Core** (menggunakan sertifikat X.509 Mutual TLS) maupun **HiveMQ Cloud Serverless** (menggunakan TLS + Username/Password).
+This guide provides step-by-step instructions for provisioning X.509 credentials and connecting [`secure_tls_telemetry.ino`](../src/secure_tls_telemetry/secure_tls_telemetry.ino) to **AWS IoT Core** (using Mutual TLS) or **HiveMQ Cloud Serverless** (using Server-Verified TLS + Username/Password).
 
 ---
 
-## 1. Opsi A: Mengatur Mutual TLS (mTLS) di AWS IoT Core
+## 1. Option A: Provisioning Mutual TLS (mTLS X.509) on AWS IoT Core
 
-### Langkah 1 — Membuat Thing & Sertifikat X.509
-1. Masuk ke **AWS Management Console** dan buka layanan **AWS IoT Core**.
-2. Buka menu **Manage > All devices > Things**, lalu klik **Create things**.
-3. Pilih **Create single thing**, beri nama Thing Anda: `esp32-secure-node-01`.
-4. Pada bagian **Device certificate**, pilih **Auto-generate a new certificate (recommended)**.
-5. Unduh **ketiga file** berikut dan simpan di komputer Anda:
-   - **Device certificate** (`xxxx-certificate.pem.crt`) -> Salin isinya ke `CLIENT_CERT_PEM` di `secrets.h`.
-   - **Private key file** (`xxxx-private.pem.key`) -> Salin isinya ke `PRIVATE_KEY_PEM` di `secrets.h`.
-   - **Amazon Root CA 1** (`AmazonRootCA1.pem`) -> Salin isinya ke `ROOT_CA_PEM` di `secrets.h`.
+### Step 1 — Create a Thing & Generate X.509 Certificates
+1. Sign in to the **AWS Management Console** and open **AWS IoT Core**.
+2. Navigate to **Manage > All devices > Things** and click **Create things**.
+3. Select **Create single thing** and name your device: `esp32-secure-node-01`.
+4. Under **Device certificate**, select **Auto-generate a new certificate (recommended)**.
+5. Download all **three PEM files** and copy their contents into `src/secure_tls_telemetry/secrets.h`:
+   - **Device certificate** (`xxxx-certificate.pem.crt`) $\rightarrow$ Paste into `CLIENT_CERT_PEM`.
+   - **Private key file** (`xxxx-private.pem.key`) $\rightarrow$ Paste into `PRIVATE_KEY_PEM`.
+   - **Amazon Root CA 1** (`AmazonRootCA1.pem`) $\rightarrow$ Paste into `ROOT_CA_PEM`.
 
-### Langkah 2 — Membuat & Melampirkan IoT Policy
-Buat Policy baru di menu **Security > Policies** dengan izin JSON berikut, lalu lampirkan (*Attach*) ke sertifikat yang baru Anda buat:
+### Step 2 — Author & Attach an AWS IoT Core Policy
+Navigate to **Security > Policies**, create a new policy with the following least-privilege JSON document, and **Attach** it to the device certificate created in Step 1:
 
 ```json
 {
@@ -42,31 +42,31 @@ Buat Policy baru di menu **Security > Policies** dengan izin JSON berikut, lalu 
 }
 ```
 
-### Langkah 3 — Menyalin Endpoint ATS ke `secrets.h`
-1. Di menu kiri AWS IoT Core, buka **Settings**.
-2. Salin nilai **Endpoint** di bawah *Device data endpoint* (format: `xxxxxx-ats.iot.ap-southeast-1.amazonaws.com`).
-3. Masukkan ke `#define MQTTS_BROKER_HOST` di `secrets.h` dan pastikan `#define USE_MUTUAL_TLS_X509 1`.
+### Step 3 — Configure the ATS Device Data Endpoint in `secrets.h`
+1. In the left navigation pane of AWS IoT Core, open **Settings**.
+2. Copy the **Endpoint** hostname under *Device data endpoint* (format: `xxxxxx-ats.iot.ap-southeast-1.amazonaws.com`).
+3. Paste the hostname into `#define MQTTS_BROKER_HOST` in `secrets.h` and ensure `#define USE_MUTUAL_TLS_X509 1`.
 
 ---
 
-## 2. Opsi B: Mengatur TLS + Username/Password di HiveMQ Cloud (Gratis)
+## 2. Option B: Provisioning TLS + Username/Password on HiveMQ Cloud (Free Tier)
 
-Jika Anda tidak memiliki akun AWS, Anda dapat membuat cluster MQTTS gratis di **HiveMQ Cloud Serverless**:
+If you prefer a zero-cost serverless MQTTS broker without an AWS account, use **HiveMQ Cloud Serverless**:
 
-1. Daftar di [HiveMQ Cloud](https://console.hivemq.cloud/) dan buat cluster **Serverless (Free)** baru.
-2. Buka tab **Access Management**, lalu buat kredensial baru (misal Username: `hivemq_device_user` dan Password pilihan Anda).
-3. Buka tab **Overview** dan salin **Cluster URL** (contoh: `8f9a0b...s1.eu.hivemq.cloud`).
-4. Di file `secrets.h`:
-   - Ubah `#define USE_MUTUAL_TLS_X509` menjadi `0`.
-   - Isi `MQTTS_BROKER_HOST` dengan Cluster URL Anda dan `MQTTS_BROKER_PORT` dengan `8883`.
-   - Isi `MQTTS_USERNAME` dan `MQTTS_PASSWORD`.
-   - Masukkan sertifikat **ISRG Root X1 (Let's Encrypt)** ke dalam `ROOT_CA_PEM`.
+1. Sign up at [HiveMQ Cloud](https://console.hivemq.cloud/) and create a **Serverless (Free)** cluster.
+2. Open the **Access Management** tab and create device credentials (e.g., Username: `hivemq_device_user` and a strong password).
+3. Open the **Overview** tab and copy your **Cluster URL** (e.g., `8f9a0b...s1.eu.hivemq.cloud`) and TLS Port (`8883`).
+4. In `src/secure_tls_telemetry/secrets.h`:
+   - Set `#define USE_MUTUAL_TLS_X509 0`.
+   - Set `MQTTS_BROKER_HOST` to your Cluster URL and `MQTTS_BROKER_PORT` to `8883`.
+   - Populate `MQTTS_USERNAME` and `MQTTS_PASSWORD`.
+   - Place the **ISRG Root X1 (Let's Encrypt)** root certificate inside `ROOT_CA_PEM`.
 
 ---
 
-## 3. Contoh Output Serial Monitor (`115200` baud)
+## 3. UART Serial Monitor Output (`115200` baud)
 
-Berikut adalah tampilan log lengkap di Serial Monitor saat ESP32 menyinkronkan waktu NTP, menyelesaikan jabat tangan kriptografi TLS pada port `8883`, mengirim telemetri bertanda waktu ISO-8601, dan menerima perintah jarak jauh terenkripsi:
+The following UART console log captures a full production lifecycle on the ESP32: Wi-Fi connection, SNTP system clock verification, X.509 Mutual TLS handshake completion on port `8883` (`1420 ms`), free SRAM heap telemetry during the active mbedTLS session, outbound ISO-8601 encrypted telemetry publication, and inbound encrypted downlink actuation:
 
 ```text
 ============================================================

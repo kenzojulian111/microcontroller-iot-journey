@@ -1,0 +1,114 @@
+{
+  "version": 1,
+  "author": "IoT Engineering Lab — Track II TinyML",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": -40,
+      "left": 185,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "ct_sim",
+      "top": -110,
+      "left": -40,
+      "attrs": {
+        "label": "SCT-013 CT Sensor Bias"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_fridge",
+      "top": 10,
+      "left": -165,
+      "attrs": {
+        "color": "blue",
+        "label": "Toggle FRIDGE (145W)"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_iron",
+      "top": 75,
+      "left": -165,
+      "attrs": {
+        "color": "red",
+        "label": "Toggle IRON (1100W)"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_inverter",
+      "top": 140,
+      "left": -165,
+      "attrs": {
+        "color": "green",
+        "label": "Toggle INV_AC (780W)"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_smps",
+      "top": 205,
+      "left": -165,
+      "attrs": {
+        "color": "yellow",
+        "label": "Toggle SMPS (65W)"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_overload",
+      "top": 130,
+      "left": 195,
+      "attrs": {
+        "color": "red",
+        "label": "High Load (>1.5kW)"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 175,
+      "left": 195,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    ["esp:TX", "$serialMonitor:RX", "", []],
+    ["esp:RX", "$serialMonitor:TX", "", []],
+    ["oled1:GND", "esp:GND.2", "black", ["v0"]],
+    ["oled1:VCC", "esp:3V3", "red", ["v0"]],
+    ["oled1:SDA", "esp:21", "cyan", ["v0"]],
+    ["oled1:SCL", "esp:22", "yellow", ["v0"]],
+    ["ct_sim:GND", "esp:GND.1", "black", ["v0"]],
+    ["ct_sim:VCC", "esp:3V3", "red", ["v0"]],
+    ["ct_sim:SIG", "esp:34", "purple", ["v0"]],
+    ["btn_fridge:1.l", "esp:12", "blue", ["v0"]],
+    ["btn_fridge:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_iron:1.l", "esp:14", "red", ["v0"]],
+    ["btn_iron:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_inverter:1.l", "esp:27", "green", ["v0"]],
+    ["btn_inverter:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_smps:1.l", "esp:26", "yellow", ["v0"]],
+    ["btn_smps:2.r", "esp:GND.1", "black", ["v0"]],
+    ["esp:2", "led_overload:A", "red", ["v0"]],
+    ["led_overload:C", "r1:1", "black", ["v0"]],
+    ["r1:2", "esp:GND.2", "black", ["v0"]]
+  ],
+  "dependencies": {}
+}

@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 23 — Smart RFID Access Control &amp; SQLAlchemy Attendance</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="badge-tag">PROJECT 23</span>
+      <div>
+        <h1>Smart Access Control &amp; SQLAlchemy Attendance</h1>
+        <p class="subtitle">ESP32 MFRC522 SPI Transceiver &bull; SSD1306 OLED &bull; Flask-SQLAlchemy ORM</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn btn-outline" href="/api/v1/attendance/export.csv">Export CSV Audit</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- KPI Metric Cards -->
+    <section class="metrics-grid">
+      <article class="metric-card">
+        <span class="metric-label">Currently On-Site</span>
+        <strong class="metric-value accent-green" id="kpi-onsite">--</strong>
+        <span class="metric-foot">Checked-in active personnel</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Enrolled Badges</span>
+        <strong class="metric-value" id="kpi-enrolled">--</strong>
+        <span class="metric-foot">Provisioned ISO14443A UIDs</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Mean Shift Duration</span>
+        <strong class="metric-value accent-blue" id="kpi-shift">-- h</strong>
+        <span class="metric-foot">Computed on CHECK_OUT</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Security Denials</span>
+        <strong class="metric-value accent-red" id="kpi-denied">--</strong>
+        <span class="metric-foot">Rogue or revoked UID taps</span>
+      </article>
+    </section>
+
+    <!-- Interactive Gate Simulator & Last OLED Preview -->
+    <section class="split-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Hardware Terminal Simulator (GATE-01)</h2>
+          <span class="mono-pill">POST /api/v1/attendance/punch</span>
+        </div>
+        <p class="panel-desc">
+          Trigger a simulated ESP32 RFID badge scan or test how the SSD1306 OLED &amp; Door Strike Relay respond to SQLAlchemy ORM decisions.
+        </p>
+        <div class="sim-buttons">
+          <button class="btn btn-primary" onclick="simulatePunch('04:A3:9B:12')">
+            Tap Kenzo (04:A3:9B:12)
+          </button>
+          <button class="btn btn-primary" onclick="simulatePunch('A1:7F:44:C8')">
+            Tap Elena (A1:7F:44:C8)
+          </button>
+          <button class="btn btn-primary" onclick="simulatePunch('7B:2E:90:55')">
+            Tap Marcus (7B:2E:90:55)
+          </button>
+          <button class="btn btn-danger" onclick="simulatePunch('DE:AD:BE:EF')">
+            Tap Rogue UID (DE:AD:BE:EF)
+          </button>
+        </div>
+
+        <div class="oled-preview" id="oled-box">
+          <div class="oled-header" id="oled-banner">GATE-01 ACCESS CTRL</div>
+          <div class="oled-body">
+            <div id="oled-line1">Name: Standby Mode</div>
+            <div id="oled-line2">Role: Awaiting ISO14443A</div>
+            <div id="oled-line3">UID : --:--:--:--</div>
+            <div class="oled-footer" id="oled-line4">T:--:--:-- LOCK:SHUT</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Employee Enrollment Form -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Provision New RFID Credential</h2>
+          <span class="mono-pill">POST /api/v1/employees</span>
+        </div>
+        <form id="enroll-form" onsubmit="enrollEmployee(event)">
+          <div class="form-row">
+            <label for="emp-uid">ISO14443A Card UID (Hex)</label>
+            <input type="text" id="emp-uid" placeholder="e.g. 5C:88:19:B0" required />
+          </div>
+          <div class="form-row">
+            <label for="emp-name">Employee Full Name</label>
+            <input type="text" id="emp-name" placeholder="e.g. Nadia Sorokin" required />
+          </div>
+          <div class="form-grid-2">
+            <div class="form-row">
+              <label for="emp-role">Job Title / Role</label>
+              <input type="text" id="emp-role" placeholder="RF Hardware Eng" required />
+            </div>
+            <div class="form-row">
+              <label for="emp-dept">Department</label>
+              <input type="text" id="emp-dept" value="Hardware Lab" required />
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success full-width">Enroll Badge in SQLAlchemy DB</button>
+          <p id="enroll-feedback" class="feedback-msg"></p>
+        </form>
+      </div>
+    </section>
+
+    <!-- Enrolled Employee Roster -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Employee Credential Directory (`employees` Table)</h2>
+        <span class="mono-pill">ORM State</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>UID</th>
+              <th>Employee Name</th>
+              <th>Role</th>
+              <th>Department</th>
+              <th>Presence State</th>
+              <th>Last Check-In (UTC)</th>
+              <th>Badge Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="employee-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Live Attendance Ledger -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Real-Time Attendance Audit Ledger (`attendance_logs` Table)</h2>
+        <span class="mono-pill">Auto-Refresh 3s</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>UTC Time</th>
+              <th>Terminal</th>
+              <th>Badge UID</th>
+              <th>Employee</th>
+              <th>Role</th>
+              <th>Event Action</th>
+              <th>Shift Hours</th>
+              <th>RSSI</th>
+            </tr>
+          </thead>
+          <tbody id="logs-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function refreshDashboard() {
+      try {
+        const [empRes, logRes] = await Promise.all([
+          fetch('/api/v1/employees'),
+          fetch('/api/v1/attendance/logs?limit=40')
+        ]);
+        const empData = await empRes.json();
+        const logData = await logRes.json();
+
+        document.getElementById('kpi-onsite').textContent = logData.metrics.currently_on_site;
+        document.getElementById('kpi-enrolled').textContent = logData.metrics.active_employees;
+        document.getElementById('kpi-shift').textContent = logData.metrics.avg_shift_hours + ' h';
+        document.getElementById('kpi-denied').textContent = logData.metrics.denied_attempts;
+
+        const empTbody = document.getElementById('employee-tbody');
+        empTbody.innerHTML = empData.employees.map(e => `
+          <tr>
+            <td class="mono">${e.uid}</td>
+            <td><strong>${e.full_name}</strong></td>
+            <td>${e.role}</td>
+            <td>${e.department}</td>
+            <td>
+              <span class="status-pill ${e.currently_checked_in ? 'pill-in' : 'pill-out'}">
+                ${e.currently_checked_in ? 'ON-SITE (IN)' : 'OFF-SITE'}
+              </span>
+            </td>
+            <td class="mono">${e.last_check_in_at || '—'}</td>
+            <td>
+              <span class="status-pill ${e.is_active ? 'pill-allowed' : 'pill-denied'}">
+                ${e.is_active ? 'ACTIVE' : 'REVOKED'}
+              </span>
+            </td>
+            <td>
+              <button class="btn btn-xs" onclick="toggleBadge(${e.id})">
+                ${e.is_active ? 'Revoke' : 'Restore'}
+              </button>
+              <button class="btn btn-xs btn-primary" onclick="simulatePunch('${e.uid}')">
+                Tap
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        const logsTbody = document.getElementById('logs-tbody');
+        logsTbody.innerHTML = logData.logs.map(l => `
+          <tr>
+            <td class="mono">${l.date} ${l.timestamp}</td>
+            <td class="mono">${l.terminal_id}</td>
+            <td class="mono">${l.uid}</td>
+            <td><strong>${l.user}</strong></td>
+            <td>${l.role}</td>
+            <td>
+              <span class="status-pill ${l.status === 'allowed' ? 'pill-allowed' : 'pill-denied'}">
+                ${l.action}
+              </span>
+            </td>
+            <td class="mono">${l.shift_hours !== null ? l.shift_hours + ' h' : '—'}</td>
+            <td class="mono">${l.rssi !== null ? l.rssi + ' dBm' : '—'}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Failed to refresh attendance telemetry:', err);
+      }
+    }
+
+    async function simulatePunch(uid) {
+      const res = await fetch('/api/v1/attendance/punch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ uid, terminal_id: 'GATE-01', rssi: -47 })
+      });
+      const data = await res.json();
+
+      const banner = document.getElementById('oled-banner');
+      banner.textContent = data.status === 'allowed'
+        ? `GRANTED: ${data.action}`
+        : `ACCESS DENIED (${data.action})`;
+      banner.className = data.status === 'allowed'
+        ? 'oled-header oled-ok'
+        : 'oled-header oled-err';
+
+      document.getElementById('oled-line1').textContent = `Name: ${data.user}`;
+      document.getElementById('oled-line2').textContent = `Role: ${data.role}`;
+      document.getElementById('oled-line3').textContent = `UID : ${data.uid}`;
+      const extra = data.shift_hours ? `(${data.shift_hours}h)` : (data.status === 'allowed' ? 'LOCK:OPEN' : 'LOCK:SHUT');
+      document.getElementById('oled-line4').textContent = `T:${data.timestamp} ${extra}`;
+
+      await refreshDashboard();
+    }
+
+    async function enrollEmployee(event) {
+      event.preventDefault();
+      const feedback = document.getElementById('enroll-feedback');
+      const payload = {
+        uid: document.getElementById('emp-uid').value,
+        full_name: document.getElementById('emp-name').value,
+        role: document.getElementById('emp-role').value,
+        department: document.getElementById('emp-dept').value
+      };
+      const res = await fetch('/api/v1/employees', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        feedback.textContent = `Enrolled ${data.employee.full_name} (${data.employee.uid})`;
+        feedback.className = 'feedback-msg text-ok';
+        document.getElementById('enroll-form').reset();
+        await refreshDashboard();
+      } else {
+        feedback.textContent = data.message || 'Enrollment error';
+        feedback.className = 'feedback-msg text-err';
+      }
+    }
+
+    async function toggleBadge(empId) {
+      await fetch(`/api/v1/employees/${empId}/toggle`, { method: 'PATCH' });
+      await refreshDashboard();
+    }
+
+    refreshDashboard();
+    setInterval(refreshDashboard, 3000);
+  </script>
+</body>
+</html>

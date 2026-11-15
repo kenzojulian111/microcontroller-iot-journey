@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "author": "Kenzo Julian — IoT Lab Track III",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu1",
+      "top": -115,
+      "left": 170,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "mq135Sim",
+      "top": -115,
+      "left": -150,
+      "attrs": { "label": "MQ-135 Gas Sim" }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relayCutoff",
+      "top": 20,
+      "left": 230,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": 135,
+      "left": 210,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledNormal",
+      "top": -20,
+      "left": -150,
+      "attrs": { "color": "green", "label": "NORMAL" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledWarning",
+      "top": 35,
+      "left": -150,
+      "attrs": { "color": "yellow", "label": "WARNING" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledCritical",
+      "top": 90,
+      "left": -150,
+      "attrs": { "color": "red", "label": "SHUTDOWN" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnFault",
+      "top": 165,
+      "left": -155,
+      "attrs": { "color": "blue", "label": "Cycle Fault Regime" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "imu1:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "imu1:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "imu1:SCL", "esp:D22", "yellow", [ "v0" ] ],
+    [ "imu1:SDA", "esp:D21", "blue", [ "v0" ] ],
+    [ "mq135Sim:GND", "esp:GND.2", "black", [ "v0" ] ],
+    [ "mq135Sim:VCC", "esp:3V3", "red", [ "v0" ] ],
+    [ "mq135Sim:SIG", "esp:D34", "purple", [ "v0" ] ],
+    [ "relayCutoff:VCC", "esp:VIN", "red", [ "v0" ] ],
+    [ "relayCutoff:GND", "esp:GND.1", "black", [ "v0" ] ],
+    [ "relayCutoff:IN", "esp:D26", "orange", [ "v0" ] ],
+    [ "bz1:1", "esp:GND.1", "black", [ "v0" ] ],
+    [ "bz1:2", "esp:D25", "purple", [ "v0" ] ],
+    [ "ledNormal:A", "esp:D32", "green", [ "v0" ] ],
+    [ "ledNormal:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "ledWarning:A", "esp:D33", "yellow", [ "v0" ] ],
+    [ "ledWarning:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "ledCritical:A", "esp:D27", "red", [ "v0" ] ],
+    [ "ledCritical:C", "esp:GND.2", "black", [ "v0" ] ],
+    [ "btnFault:1.l", "esp:D14", "blue", [ "v0" ] ],
+    [ "btnFault:2.l", "esp:GND.2", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

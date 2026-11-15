@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "author": "IoT Engineering Lab — Track II TinyML",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": -30,
+      "left": 185,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_entry",
+      "top": 20,
+      "left": -155,
+      "attrs": {
+        "color": "green",
+        "label": "Spawn ENTRY (L->R)"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_exit",
+      "top": 90,
+      "left": -155,
+      "attrs": {
+        "color": "orange",
+        "label": "Spawn EXIT (R->L)"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_reset",
+      "top": 160,
+      "left": -155,
+      "attrs": {
+        "color": "red",
+        "label": "Reset Occupancy"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_occ",
+      "top": 130,
+      "left": 195,
+      "attrs": {
+        "color": "cyan",
+        "label": "Zone Occupied"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 175,
+      "left": 195,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    ["esp:TX", "$serialMonitor:RX", "", []],
+    ["esp:RX", "$serialMonitor:TX", "", []],
+    ["oled1:GND", "esp:GND.2", "black", ["v0"]],
+    ["oled1:VCC", "esp:3V3", "red", ["v0"]],
+    ["oled1:SDA", "esp:21", "cyan", ["v0"]],
+    ["oled1:SCL", "esp:22", "yellow", ["v0"]],
+    ["btn_entry:1.l", "esp:12", "green", ["v0"]],
+    ["btn_entry:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_exit:1.l", "esp:14", "orange", ["v0"]],
+    ["btn_exit:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_reset:1.l", "esp:27", "red", ["v0"]],
+    ["btn_reset:2.r", "esp:GND.1", "black", ["v0"]],
+    ["esp:2", "led_occ:A", "cyan", ["v0"]],
+    ["led_occ:C", "r1:1", "black", ["v0"]],
+    ["r1:2", "esp:GND.2", "black", ["v0"]]
+  ],
+  "dependencies": {}
+}

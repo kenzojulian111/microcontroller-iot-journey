@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 21 — Authenticated Wi-Fi REST Weather Station</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="status-dot" id="nodeDot"></span>
+      <div>
+        <h1>ESP32 BME280 REST API Weather Station</h1>
+        <p class="subtitle">X-API-Key Authenticated Ingestion &bull; Magnus-Tetens Dew Point &bull; Multi-Axis Chart.js</p>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge" id="nodeBadge">NODE: --</span>
+      <span class="badge" id="rssiBadge">RSSI: -- dBm</span>
+      <span class="badge" id="countBadge">SAMPLES: 0</span>
+    </div>
+  </header>
+
+  <main class="dashboard">
+    <section class="kpi-row">
+      <div class="kpi-card">
+        <span class="kpi-title">Dry-Bulb Temperature</span>
+        <div class="kpi-val cyan" id="kpiTemp">-- &deg;C</div>
+        <div class="kpi-meta" id="metaTemp">Min: -- | Mean: -- | Max: --</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Relative Humidity</span>
+        <div class="kpi-val green" id="kpiHum">-- %</div>
+        <div class="kpi-meta" id="metaHum">Min: -- | Mean: -- | Max: --</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Calculated Dew Point</span>
+        <div class="kpi-val purple" id="kpiDew">-- &deg;C</div>
+        <div class="kpi-meta" id="metaDew">Magnus-Tetens Mean: -- &deg;C</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-title">Barometric Pressure</span>
+        <div class="kpi-val amber" id="kpiPress">-- hPa</div>
+        <div class="kpi-meta" id="metaPress">Min: -- | Mean: -- | Max: --</div>
+      </div>
+    </section>
+
+    <section class="charts-grid">
+      <div class="chart-panel">
+        <div class="panel-header">
+          <h2>Psychrometric Profile — Temperature, Dew Point (&deg;C) &amp; Relative Humidity (%)</h2>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="thermoChart"></canvas>
+        </div>
+      </div>
+
+      <div class="chart-panel">
+        <div class="panel-header">
+          <h2>Atmospheric Barometric Pressure Trend (hPa)</h2>
+        </div>
+        <div class="canvas-wrap">
+          <canvas id="pressureChart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let thermoChart = null;
+    let pressureChart = null;
+
+    function initCharts() {
+      const ctxThermo = document.getElementById('thermoChart').getContext('2d');
+      thermoChart = new Chart(ctxThermo, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Temperature (°C)',
+              data: [],
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.1)',
+              yAxisID: 'yTemp',
+              tension: 0.3,
+              pointRadius: 2
+            },
+            {
+              label: 'Dew Point (°C)',
+              data: [],
+              borderColor: '#c084fc',
+              borderDash: [5, 5],
+              yAxisID: 'yTemp',
+              tension: 0.3,
+              pointRadius: 2
+            },
+            {
+              label: 'Humidity (%RH)',
+              data: [],
+              borderColor: '#22c55e',
+              yAxisID: 'yHum',
+              tension: 0.3,
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { labels: { color: '#e2e8f0' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+            yTemp: {
+              type: 'linear',
+              position: 'left',
+              title: { display: true, text: '°C', color: '#38bdf8' },
+              ticks: { color: '#38bdf8' },
+              grid: { color: '#1e293b' }
+            },
+            yHum: {
+              type: 'linear',
+              position: 'right',
+              title: { display: true, text: '%RH', color: '#22c55e' },
+              ticks: { color: '#22c55e' },
+              grid: { drawOnChartArea: false }
+            }
+          }
+        }
+      });
+
+      const ctxPress = document.getElementById('pressureChart').getContext('2d');
+      pressureChart = new Chart(ctxPress, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Barometric Pressure (hPa)',
+              data: [],
+              borderColor: '#f59e0b',
+              backgroundColor: 'rgba(245, 158, 11, 0.15)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#e2e8f0' } } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+            y: { ticks: { color: '#f59e0b' }, grid: { color: '#1e293b' } }
+          }
+        }
+      });
+    }
+
+    async function pollWeather() {
+      try {
+        const [seriesRes, statRes] = await Promise.all([
+          fetch('/api/v1/telemetry?limit=40'),
+          fetch('/api/v1/analytics')
+        ]);
+        const seriesData = await seriesRes.json();
+        const statData = await statRes.json();
+
+        const latest = statData.latest;
+        const a = statData.analytics || {};
+
+        document.getElementById('countBadge').textContent = `SAMPLES: ${a.sample_count ?? 0}`;
+        if (latest) {
+          document.getElementById('nodeDot').className = 'status-dot online';
+          document.getElementById('nodeBadge').textContent = `NODE: ${latest.node_id}`;
+          document.getElementById('rssiBadge').textContent = `RSSI: ${latest.rssi_dbm} dBm`;
+          document.getElementById('kpiTemp').innerHTML = `${latest.temp_c.toFixed(2)} &deg;C`;
+          document.getElementById('kpiHum').textContent = `${latest.hum_pct.toFixed(2)} %`;
+          document.getElementById('kpiDew').innerHTML = `${latest.dew_point_c.toFixed(2)} &deg;C`;
+          document.getElementById('kpiPress').textContent = `${latest.press_hpa.toFixed(2)} hPa`;
+        }
+
+        document.getElementById('metaTemp').textContent =
+          `Min: ${a.temp_min_c ?? '--'}°C | Mean: ${a.temp_mean_c ?? '--'}°C | Max: ${a.temp_max_c ?? '--'}°C`;
+        document.getElementById('metaHum').textContent =
+          `Min: ${a.hum_min_pct ?? '--'}% | Mean: ${a.hum_mean_pct ?? '--'}% | Max: ${a.hum_max_pct ?? '--'}%`;
+        document.getElementById('metaDew').innerHTML =
+          `Magnus-Tetens Mean: ${a.dew_point_mean_c ?? '--'} &deg;C`;
+        document.getElementById('metaPress').textContent =
+          `Min: ${a.press_min_hpa ?? '--'} | Mean: ${a.press_mean_hpa ?? '--'} | Max: ${a.press_max_hpa ?? '--'}`;
+
+        const rows = seriesData.series || [];
+        const labels = rows.map(r => r.ts_utc.slice(11, 19));
+
+        thermoChart.data.labels = labels;
+        thermoChart.data.datasets[0].data = rows.map(r => r.temp_c);
+        thermoChart.data.datasets[1].data = rows.map(r => r.dew_point_c);
+        thermoChart.data.datasets[2].data = rows.map(r => r.hum_pct);
+        thermoChart.update('none');
+
+        pressureChart.data.labels = labels;
+        pressureChart.data.datasets[0].data = rows.map(r => r.press_hpa);
+        pressureChart.update('none');
+      } catch (err) {
+        console.error('Weather poll error:', err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initCharts();
+      pollWeather();
+      setInterval(pollWeather, 3000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 25 — OpenCV Smart Gate &amp; Servo Safety Controller</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="badge-tag">PROJECT 25</span>
+      <div>
+        <h1>Computer Vision OpenCV + Hardware Servo Gate Trigger</h1>
+        <p class="subtitle">OpenCV QR &amp; Haar Face Verification &bull; SG90/MG996R Servo Boom &bull; HC-SR04 Anti-Crush Interlock</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-danger" onclick="sendGateCommand('GATE:LOCK')">Emergency Lockdown</button>
+      <button class="btn btn-outline" onclick="sendGateCommand('GATE:UNLOCK')">Release Lock</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- KPI Row -->
+    <section class="metrics-grid">
+      <article class="metric-card">
+        <span class="metric-label">Barrier Servo State</span>
+        <strong class="metric-value accent-blue" id="kpi-state">CLOSED</strong>
+        <span class="metric-foot" id="kpi-angle">Boom Angle: 0°</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">HC-SR04 Lane Clearance</span>
+        <strong class="metric-value accent-green" id="kpi-clearance">118.4 cm</strong>
+        <span class="metric-foot" id="kpi-obstacle">Safety Interlock: CLEAR (&gt;35 cm)</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">OpenCV Pipeline Mode</span>
+        <strong class="metric-value" id="kpi-cvmode">IDLE</strong>
+        <span class="metric-foot" id="kpi-fps">Stream Rate: -- FPS</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Last Hardware Command</span>
+        <strong class="metric-value mono" id="kpi-cmd">GATE:CLOSE</strong>
+        <span class="metric-foot" id="kpi-serial">UART Bridge: Active Twin</span>
+      </article>
+    </section>
+
+    <!-- Live MJPEG Feed + Operator Controls -->
+    <section class="split-grid">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Live OpenCV Annotated Stream (`/video_feed`)</h2>
+          <span class="mono-pill">cv2.QRCodeDetector + CascadeClassifier</span>
+        </div>
+        <div class="video-frame">
+          <img src="/video_feed" alt="Live OpenCV Smart Gate Stream" />
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Vision Target &amp; Ultrasonic Safety Simulator</h2>
+          <span class="mono-pill">POST /api/v1/vision/simulate</span>
+        </div>
+        <p class="panel-desc">
+          Present synthetic QR credentials or operator faces to the OpenCV pipeline, or simulate a vehicle stopped beneath the barrier using the HC-SR04 slider.
+        </p>
+
+        <h3 class="subhead">1. Present Vision Credential to Camera</h3>
+        <div class="control-grid">
+          <button class="btn btn-success" onclick="simulateScene('VALID_QR')">
+            Present Authorized QR Pass (Kenzo)
+          </button>
+          <button class="btn btn-primary" onclick="simulateScene('FACE_OP')">
+            Present Authorized Face (Elena)
+          </button>
+          <button class="btn btn-danger" onclick="simulateScene('ROGUE_QR')">
+            Present Forged QR Token
+          </button>
+          <button class="btn btn-outline" onclick="simulateScene('STANDBY')">
+            Clear Camera ROI
+          </button>
+        </div>
+
+        <h3 class="subhead">2. Direct Servo Gate Override (`pyserial`)</h3>
+        <div class="control-grid">
+          <button class="btn btn-success" onclick="sendGateCommand('GATE:OPEN')">
+            Send GATE:OPEN (90°)
+          </button>
+          <button class="btn btn-warning" onclick="sendGateCommand('GATE:CLOSE')">
+            Send GATE:CLOSE (0°)
+          </button>
+        </div>
+
+        <h3 class="subhead">3. HC-SR04 Ultrasonic Vehicle Presence Interlock</h3>
+        <div class="slider-box">
+          <label for="clearance-slider">
+            Simulated Distance Beneath Boom: <strong id="slider-val">118 cm</strong>
+            <span class="muted">(Safety threshold: 35 cm)</span>
+          </label>
+          <input
+            type="range"
+            id="clearance-slider"
+            min="10"
+            max="180"
+            value="118"
+            oninput="updateClearance(this.value)"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- Access Log Table -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>OpenCV Verification &amp; Gate Actuation Audit Log</h2>
+        <span class="mono-pill">Auto-Refresh 2s</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>UTC Time</th>
+              <th>Vision Mode</th>
+              <th>Subject / Holder</th>
+              <th>Vehicle ID</th>
+              <th>Token / Classifier ID</th>
+              <th>Confidence</th>
+              <th>HC-SR04 Clearance</th>
+              <th>Hardware Action</th>
+            </tr>
+          </thead>
+          <tbody id="events-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function sendGateCommand(command) {
+      await fetch('/api/v1/gate/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command })
+      });
+      await pollStatus();
+    }
+
+    async function simulateScene(scene) {
+      await fetch('/api/v1/vision/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scene })
+      });
+      await pollStatus();
+    }
+
+    async function updateClearance(val) {
+      document.getElementById('slider-val').textContent = val + ' cm';
+      await fetch('/api/v1/vision/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clearance_cm: parseFloat(val) })
+      });
+      await pollStatus();
+    }
+
+    async function pollStatus() {
+      try {
+        const res = await fetch('/api/v1/gate/status');
+        const data = await res.json();
+
+        const g = data.gate;
+        const stEl = document.getElementById('kpi-state');
+        stEl.textContent = g.state;
+        stEl.className = 'metric-value ' + (
+          g.state === 'OPEN' ? 'accent-green' :
+          g.state === 'OBSTRUCTED_HOLD' || g.state === 'LOCKED' ? 'accent-red' : 'accent-blue'
+        );
+        document.getElementById('kpi-angle').textContent = `Boom Angle: ${g.angle_deg}°`;
+
+        const clEl = document.getElementById('kpi-clearance');
+        clEl.textContent = `${g.clearance_cm.toFixed(1)} cm`;
+        clEl.className = 'metric-value ' + (g.vehicle_under_gate ? 'accent-red' : 'accent-green');
+        document.getElementById('kpi-obstacle').textContent = g.vehicle_under_gate
+          ? 'OBSTACLE DETECTED (<35 cm) — CLOSURE BLOCKED!'
+          : 'Safety Interlock: CLEAR (>35 cm)';
+
+        document.getElementById('kpi-cvmode').textContent = data.vision.last_detection;
+        document.getElementById('kpi-fps').textContent = `Stream Rate: ${data.vision.fps} FPS`;
+        document.getElementById('kpi-cmd').textContent = g.last_command;
+
+        const tbody = document.getElementById('events-tbody');
+        tbody.innerHTML = data.events.map(ev => `
+          <tr>
+            <td class="mono">${ev.timestamp}</td>
+            <td>
+              <span class="status-pill ${ev.authorized ? 'pill-ok' : 'pill-err'}">${ev.mode}</span>
+            </td>
+            <td><strong>${ev.holder}</strong></td>
+            <td class="mono">${ev.vehicle}</td>
+            <td class="mono">${ev.token}</td>
+            <td class="mono">${(ev.confidence * 100).toFixed(0)}%</td>
+            <td class="mono">${ev.clearance_cm.toFixed(1)} cm</td>
+            <td class="mono">${ev.gate_action}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error('Status poll error:', err);
+      }
+    }
+
+    pollStatus();
+    setInterval(pollStatus, 2000);
+  </script>
+</body>
+</html>

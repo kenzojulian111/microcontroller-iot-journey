@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 19 — USB Serial Hardware Bridge Console</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="status-dot" id="connDot"></span>
+      <div>
+        <h1>USB Serial Hardware Bridge</h1>
+        <p class="subtitle">ATmega328P / ESP32 Deterministic UART Command &amp; Control (115200 8N1 + XOR CRC)</p>
+      </div>
+    </div>
+    <div class="meta-badges">
+      <span class="badge" id="modeBadge">MODE: --</span>
+      <span class="badge" id="portBadge">PORT: --</span>
+      <span class="badge" id="seqBadge">SEQ: 0</span>
+      <span class="badge" id="latencyBadge">RTT: 0.0 ms</span>
+    </div>
+  </header>
+
+  <main class="grid-container">
+    <!-- Relay Control Card -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Channel 1 — High-Current Relay</h2>
+        <span class="pin-tag">GPIO D4 / GPIO26</span>
+      </div>
+      <p class="card-desc">Digital opto-isolated relay output controlled via <code>CMD:RELAY,&lt;0|1&gt;*CRC</code>.</p>
+      <div class="relay-control">
+        <div class="state-indicator" id="relayIndicator">DE-ENERGIZED (LOW)</div>
+        <div class="btn-group">
+          <button class="btn btn-success" id="btnRelayOn" onclick="sendControl({relay: 1})">ENERGIZE (ON)</button>
+          <button class="btn btn-danger" id="btnRelayOff" onclick="sendControl({relay: 0})">RELEASE (OFF)</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- PWM Dimmer Card -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Channel 2 — 8-Bit PWM Dimmer</h2>
+        <span class="pin-tag">GPIO D5 / GPIO25</span>
+      </div>
+      <p class="card-desc">Hardware Timer PWM duty cycle register (<code>0–255</code>) mapped to percentage duty factor.</p>
+      <div class="slider-block">
+        <div class="slider-readout">
+          <span id="pwmRawValue">0</span> <small>/ 255</small>
+          <span class="accent-val" id="pwmPctValue">(0.0%)</span>
+        </div>
+        <input type="range" id="pwmSlider" min="0" max="255" value="0"
+               oninput="previewPwm(this.value)"
+               onchange="sendControl({pwm: parseInt(this.value, 10)})" />
+        <div class="preset-row">
+          <button class="btn-chip" onclick="setPwmPreset(0)">0%</button>
+          <button class="btn-chip" onclick="setPwmPreset(64)">25%</button>
+          <button class="btn-chip" onclick="setPwmPreset(128)">50%</button>
+          <button class="btn-chip" onclick="setPwmPreset(191)">75%</button>
+          <button class="btn-chip" onclick="setPwmPreset(255)">100%</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Servo Actuator Card -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Channel 3 — SG90 Servo Actuator</h2>
+        <span class="pin-tag">GPIO D9 / GPIO27</span>
+      </div>
+      <p class="card-desc">50 Hz pulse-width modulation (<code>500–2400 &micro;s</code>) for angular positioning (<code>0–180&deg;</code>).</p>
+      <div class="slider-block">
+        <div class="slider-readout">
+          <span id="servoAngleValue">90&deg;</span>
+          <span class="accent-val" id="servoPulseValue">(1450 &micro;s)</span>
+        </div>
+        <input type="range" id="servoSlider" min="0" max="180" value="90"
+               oninput="previewServo(this.value)"
+               onchange="sendControl({servo: parseInt(this.value, 10)})" />
+        <div class="preset-row">
+          <button class="btn-chip" onclick="setServoPreset(0)">0&deg;</button>
+          <button class="btn-chip" onclick="setServoPreset(45)">45&deg;</button>
+          <button class="btn-chip" onclick="setServoPreset(90)">90&deg;</button>
+          <button class="btn-chip" onclick="setServoPreset(135)">135&deg;</button>
+          <button class="btn-chip" onclick="setServoPreset(180)">180&deg;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Wire Protocol Inspector Card -->
+    <section class="card full-width">
+      <div class="card-header">
+        <h2>UART Frame &amp; Checksum Inspector</h2>
+        <button class="btn-chip" onclick="fetchState()">Poll STATUS</button>
+      </div>
+      <div class="terminal-box">
+        <div class="term-row">
+          <span class="term-label">TX (Host &rarr; MCU):</span>
+          <code id="txFrame">--</code>
+        </div>
+        <div class="term-row">
+          <span class="term-label">RX (MCU &rarr; Host):</span>
+          <code id="rxFrame">--</code>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    function previewPwm(val) {
+      const v = parseInt(val, 10);
+      document.getElementById('pwmRawValue').textContent = v;
+      document.getElementById('pwmPctValue').textContent = `(${((v / 255) * 100).toFixed(1)}%)`;
+    }
+
+    function setPwmPreset(val) {
+      document.getElementById('pwmSlider').value = val;
+      previewPwm(val);
+      sendControl({ pwm: val });
+    }
+
+    function previewServo(val) {
+      const deg = parseInt(val, 10);
+      const pulseUs = Math.round(500 + (deg * 1900) / 180);
+      document.getElementById('servoAngleValue').innerHTML = `${deg}&deg;`;
+      document.getElementById('servoPulseValue').innerHTML = `(${pulseUs} &micro;s)`;
+    }
+
+    function setServoPreset(val) {
+      document.getElementById('servoSlider').value = val;
+      previewServo(val);
+      sendControl({ servo: val });
+    }
+
+    function renderState(data) {
+      document.getElementById('connDot').className = data.ok ? 'status-dot online' : 'status-dot error';
+      document.getElementById('modeBadge').textContent = `MODE: ${data.mode || 'UNKNOWN'}`;
+      document.getElementById('portBadge').textContent = `PORT: ${data.port || '--'}`;
+      document.getElementById('seqBadge').textContent = `SEQ: ${data.seq ?? 0}`;
+      document.getElementById('latencyBadge').textContent = `RTT: ${data.last_latency_ms ?? 0} ms`;
+
+      const relayInd = document.getElementById('relayIndicator');
+      if (data.relay === 1) {
+        relayInd.textContent = 'ENERGIZED (HIGH / ON)';
+        relayInd.className = 'state-indicator active';
+      } else {
+        relayInd.textContent = 'DE-ENERGIZED (LOW / OFF)';
+        relayInd.className = 'state-indicator';
+      }
+
+      if (typeof data.pwm === 'number') {
+        document.getElementById('pwmSlider').value = data.pwm;
+        previewPwm(data.pwm);
+      }
+
+      if (typeof data.servo === 'number') {
+        document.getElementById('servoSlider').value = data.servo;
+        previewServo(data.servo);
+      }
+
+      document.getElementById('txFrame').textContent = data.last_frame_tx || '--';
+      document.getElementById('rxFrame').textContent = data.last_frame_rx || '--';
+    }
+
+    async function fetchState() {
+      try {
+        const res = await fetch('/api/state');
+        const data = await res.json();
+        renderState(data);
+      } catch (err) {
+        document.getElementById('connDot').className = 'status-dot error';
+      }
+    }
+
+    async function sendControl(payload) {
+      try {
+        const res = await fetch('/api/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        renderState(data);
+      } catch (err) {
+        console.error('Control request failed:', err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchState();
+      setInterval(fetchState, 3000);
+    });
+  </script>
+</body>
+</html>

@@ -1,8 +1,8 @@
-# Dokumentasi Cloud Telemetry, Layar OLED & Output Serial Monitor
+# Cloud Telemetry Payloads, OLED Layout & UART Output — 02 Weather & Room Monitor
 
-## 1. Contoh Output Serial Monitor (115200 baud)
+## 1. UART Serial Monitor Output (`115200` baud)
 
-Saat mikrokontroler dinyalakan, menginisialisasi layar OLED serta sensor DHT22, lalu mengirimkan data ke Cloud, berikut tampilan pada **Serial Monitor**:
+When the microcontroller initializes the SSD1306 OLED over I2C, polls the DHT22 sensor, and transmits telemetry to the cloud, the UART console outputs:
 
 ```text
 ==================================================
@@ -21,56 +21,57 @@ Saat mikrokontroler dinyalakan, menginisialisasi layar OLED serta sensor DHT22, 
 [THINGSPEAK] Berhasil kirim data! Entry ID: 142 (HTTP 200)
 ```
 
-> **Catatan Mode Simulasi / Offline:**  
-> Apabila `THINGSPEAK_API_KEY` belum diubah di `secrets.h`, perangkat tetap berjalan normal menampilkan data di layar OLED dan mencetak JSON telemetri di Serial Monitor dengan status `CLD:SIM-OK`.
+> [!NOTE]
+> **Simulation / Unconfigured API Key Mode:**  
+> If `THINGSPEAK_API_KEY` is left at its placeholder value in `secrets.h`, the firmware continues updating the local OLED display and serializing JSON telemetry to the UART console with status indicator `CLD:SIM-OK`.
 
 ---
 
-## 2. Tata Letak Tampilan Layar OLED SSD1306 (128x64)
+## 2. SSD1306 OLED Framebuffer Layout (128×64 Pixels)
 
-Layar OLED diperbarui setiap **2,5 detik** tanpa memblokir eksekusi program utama:
+The OLED framebuffer is refreshed every **2.5 seconds** via a non-blocking timer:
 
 ```text
 +-----------------------------------+
-| WiFi:-52dBm            CLD:OK#14  |  <-- Baris status Wi-Fi RSSI & sinkronisasi Cloud
+| WiFi:-52dBm            CLD:OK#14  |  <-- Top status bar: Wi-Fi RSSI & Cloud sync counter
 |-----------------------------------|
-| SUHU                   LEMBAP     |  <-- Label parameter utama
-|  26.5 °C                58 %      |  <-- Angka ukuran besar (TextSize 2)
+| SUHU                   LEMBAP     |  <-- Primary metric headers
+|  26.5 °C                58 %      |  <-- High-visibility telemetry (TextSize 2)
 |-----------------------------------|
-| Terasa: 27.3 C                    |  <-- Heat Index (suhu yang dirasakan tubuh)
-| Status: NYAMAN (IDEAL)            |  <-- Indeks kenyamanan ruangan otomatis
+| Terasa: 27.3 C                    |  <-- Computed Heat Index (apparent temperature)
+| Status: NYAMAN (IDEAL)            |  <-- Automated psychrometric comfort classification
 +-----------------------------------+
 ```
 
-### Kategori Kenyamanan Ruangan Otomatis:
-- **`NYAMAN (IDEAL)`**: Suhu `20.0 °C – 27.5 °C` dan kelembapan `40% – 65%`.
-- **`PANAS/LEMBAP`**: Suhu `>= 32.0 °C` atau kelembapan `>= 80%`.
-- **`SEJUK/DINGIN`**: Suhu `< 20.0 °C`.
-- **`NORMAL`**: Kondisi di luar rentang di atas namun masih dalam batas wajar.
+### Automated Psychrometric Comfort Thresholds
+- **`NYAMAN (IDEAL)`**: Ambient temperature within `20.0 °C – 27.5 °C` **and** relative humidity within `40% – 65%`.
+- **`PANAS/LEMBAP`**: Ambient temperature `>= 32.0 °C` **or** relative humidity `>= 80%`.
+- **`SEJUK/DINGIN`**: Ambient temperature `< 20.0 °C`.
+- **`NORMAL`**: Transitional environmental states outside the ideal comfort zone but within non-extreme bounds.
 
 ---
 
-## 3. Format Pengiriman Data ke Cloud
+## 3. Cloud Telemetry Protocol Specification
 
-### a. ThingSpeak (`http://api.thingspeak.com/update`)
-Saat kamu membuat Channel baru di [ThingSpeak](https://thingspeak.com), aktifkan 4 *Field* berikut agar sesuai dengan data yang dikirimkan oleh sketch:
+### a. ThingSpeak REST Ingestion (`http://api.thingspeak.com/update`)
+When provisioning a new Channel on [ThingSpeak](https://thingspeak.com), enable the following four fields to match the firmware's uplink payload:
 
-| Field ThingSpeak | Parameter yang Dikirim | Satuan |
-| :--- | :--- | :--- |
-| **`field1`** | Suhu Ruangan (`currentTempC`) | `°C` |
-| **`field2`** | Kelembapan Udara (`currentHumidity`) | `%` |
-| **`field3`** | Indeks Panas / *Heat Index* (`currentHeatIndex`) | `°C` |
-| **`field4`** | Kekuatan Sinyal Wi-Fi (`WiFi.RSSI()`) | `dBm` |
+| ThingSpeak Field | Firmware Variable | Unit | Description |
+| :--- | :--- | :--- | :--- |
+| **`field1`** | `currentTempC` | `°C` | Ambient dry-bulb temperature |
+| **`field2`** | `currentHumidity` | `%` | Relative humidity |
+| **`field3`** | `currentHeatIndex` | `°C` | Computed apparent temperature (Heat Index) |
+| **`field4`** | `WiFi.RSSI()` | `dBm` | Wi-Fi Received Signal Strength Indicator |
 
-- **Metode:** `POST /update`
-- **Header:** `Content-Type: application/x-www-form-urlencoded`
-- **Contoh Body:**
+- **HTTP Method:** `POST /update`
+- **Content-Type Header:** `application/x-www-form-urlencoded`
+- **Example Request Body:**
   ```text
   api_key=XXXXXXXXXXXXXXXX&field1=26.50&field2=58.20&field3=27.31&field4=-52
   ```
 
-### b. Endpoint HTTP JSON Generik (ThingsBoard / Webhook)
-Jika `CUSTOM_JSON_ENDPOINT` diisi di `secrets.h` (misalnya `http://demo.thingsboard.io/api/v1/<TOKEN>/telemetry`), mikrokontroler juga akan mengirimkan `POST` berformat `application/json`:
+### b. Generic HTTP JSON Webhook (ThingsBoard / Custom REST Server)
+When `CUSTOM_JSON_ENDPOINT` is configured in `secrets.h` (for example, `http://demo.thingsboard.io/api/v1/<ACCESS_TOKEN>/telemetry`), the firmware dispatches an HTTP `POST` request with `Content-Type: application/json`:
 
 ```json
 {

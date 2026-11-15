@@ -1,20 +1,20 @@
-# Spesifikasi Topik MQTT, Integrasi Home Assistant & Node-RED
+# MQTT Topic Specification, Home Assistant YAML & Node-RED Flows — 04 MQTT Home Automation Hub
 
-Dokumen ini menjelaskan daftar topik MQTT yang digunakan oleh **Proyek 04 (`04-mqtt-home-automation`)**, cara mengujinya dengan CLI `mosquitto_pub`/`mosquitto_sub`, serta contoh integrasi langsung ke **Home Assistant** dan **Node-RED**.
+This document defines the MQTT topic hierarchy implemented by **Project 04 (`04-mqtt-home-automation`)**, provides CLI verification commands using `mosquitto_pub`/`mosquitto_sub`, and supplies ready-to-use configurations for **Home Assistant** and **Node-RED**.
 
 ---
 
-## 1. Daftar Topik MQTT (`NODE_ID = "node01"`)
+## 1. MQTT Topic Hierarchy (`NODE_ID = "node01"`)
 
-| Topik MQTT | Arah ( dari sisi ESP ) | QoS / Retained | Format Payload | Deskripsi |
+| MQTT Topic | Direction (ESP Perspective) | QoS / Retained | Payload Schema | Description |
 | :--- | :--- | :--- | :--- | :--- |
-| `home/node01/status` | **Publish** (+ LWT) | QoS 1, Retained | `"online"` atau `"offline"` | Status ketersediaan perangkat (Last Will and Testament) |
-| `home/node01/telemetry` | **Publish** (tiap 5 dtk) | QoS 0, Non-Retained | Objek JSON | Data suhu (°C), kelembapan (%), PIR, status relay, RSSI, uptime, dan free heap |
-| `home/node01/motion` | **Publish** (saat berubah) | QoS 0, Retained | `"DETECTED"` atau `"CLEAR"` | Event instan saat sensor gerak PIR mendeteksi pergerakan |
-| `home/node01/relay/state` | **Publish** (saat berubah) | QoS 0, Retained | `"ON"` atau `"OFF"` | State aktual relay (baik diubah dari MQTT maupun tombol fisik) |
-| `home/node01/relay/set` | **Subscribe** | QoS 0 | `"ON"`, `"OFF"`, `"TOGGLE"`, atau JSON `{"state":"ON"}` | Topik perintah untuk menyalakan/mematikan relay dari jarak jauh |
+| `home/node01/status` | **Publish** (+ Broker LWT) | QoS 1, Retained | `"online"` or `"offline"` | Device availability state (Last Will and Testament) |
+| `home/node01/telemetry` | **Publish** (every 5 s) | QoS 0, Non-Retained | JSON Object | Temperature (°C), humidity (%RH), PIR motion flag, relay state, RSSI, uptime, and free heap |
+| `home/node01/motion` | **Publish** (on edge change) | QoS 0, Retained | `"DETECTED"` or `"CLEAR"` | Instantaneous edge-triggered event from the HC-SR501 PIR sensor |
+| `home/node01/relay/state` | **Publish** (on state change) | QoS 0, Retained | `"ON"` or `"OFF"` | Authoritative relay state (updated by both MQTT commands and physical button) |
+| `home/node01/relay/set` | **Subscribe** | QoS 0 | `"ON"`, `"OFF"`, `"TOGGLE"`, or JSON `{"state":"ON"}` | Inbound command topic for remote relay actuation |
 
-### Contoh Payload JSON pada `home/node01/telemetry`:
+### Example JSON Payload on `home/node01/telemetry`
 
 ```json
 {
@@ -32,7 +32,7 @@ Dokumen ini menjelaskan daftar topik MQTT yang digunakan oleh **Proyek 04 (`04-m
 
 ---
 
-## 2. Contoh Output Serial Monitor (`115200` baud)
+## 2. UART Serial Monitor Output (`115200` baud)
 
 ```text
 ==================================================
@@ -55,26 +55,26 @@ Dokumen ini menjelaskan daftar topik MQTT yang digunakan oleh **Proyek 04 (`04-m
 
 ---
 
-## 3. Pengujian Menggunakan Mosquitto CLI / MQTT Explorer
+## 3. Verification via Mosquitto CLI & MQTT Explorer
 
-Anda dapat memantau dan mengontrol perangkat langsung dari terminal komputer (pastikan paket `mosquitto-clients` sudah terinstal):
+You can inspect telemetry streams and dispatch actuation commands directly from a Linux/macOS/Windows terminal (`mosquitto-clients` package):
 
-### a. Berlangganan (Subscribe) ke Seluruh Topik Node:
+### a. Subscribe to the Complete Node Topic Tree
 ```bash
 mosquitto_sub -h broker.emqx.io -p 1883 -t "home/node01/#" -v
 ```
 
-### b. Menyalakan Relay via Perintah Teks:
+### b. Energize the Relay via Plain-Text Command
 ```bash
 mosquitto_pub -h broker.emqx.io -p 1883 -t "home/node01/relay/set" -m "ON"
 ```
 
-### c. Mematikan Relay via Perintah Teks:
+### c. De-energize the Relay via Plain-Text Command
 ```bash
 mosquitto_pub -h broker.emqx.io -p 1883 -t "home/node01/relay/set" -m "OFF"
 ```
 
-### d. Toggle Relay atau Mengirim Payload JSON:
+### d. Toggle the Relay or Send a JSON Command Payload
 ```bash
 mosquitto_pub -h broker.emqx.io -p 1883 -t "home/node01/relay/set" -m "TOGGLE"
 mosquitto_pub -h broker.emqx.io -p 1883 -t "home/node01/relay/set" -m '{"state":"ON"}'
@@ -82,9 +82,9 @@ mosquitto_pub -h broker.emqx.io -p 1883 -t "home/node01/relay/set" -m '{"state":
 
 ---
 
-## 4. Konfigurasi YAML untuk Home Assistant (`configuration.yaml`)
+## 4. Home Assistant Integration (`configuration.yaml`)
 
-Tambahkan blok berikut ke file `configuration.yaml` pada instalasi **Home Assistant** Anda agar saklar, sensor suhu/kelembapan, dan sensor gerak PIR otomatis muncul beserta deteksi *availability* (LWT):
+Add the following `mqtt:` block to your **Home Assistant** `configuration.yaml` to register the switch, temperature/humidity sensors, and PIR binary occupancy sensor with automatic LWT availability tracking:
 
 ```yaml
 mqtt:
@@ -132,9 +132,9 @@ mqtt:
 
 ---
 
-## 5. Contoh Flow Node-RED (Import JSON)
+## 5. Node-RED Automation Flow (Importable JSON)
 
-Salin JSON di bawah ini ke menu **Import (`Ctrl+I`)** pada **Node-RED** untuk membuat alur pemantauan telemetri dan otomasi menyalakan lampu saat gerakan terdeteksi:
+Copy the JSON array below into **Node-RED** via **Menu > Import (`Ctrl+I`)** to deploy a telemetry monitor and an automated motion-activated lighting rule:
 
 ```json
 [

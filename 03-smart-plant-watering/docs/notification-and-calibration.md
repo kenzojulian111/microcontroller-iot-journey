@@ -1,37 +1,37 @@
-# Dokumentasi Notifikasi Telegram/Discord & Log Serial Monitor
+# Telegram Bot API, Discord Webhooks & UART Telemetry Logs — 03 Smart Plant Watering System
 
-## 1. Cara Membuat Bot Telegram (`@BotFather`)
+## 1. Provisioning a Telegram Bot via `@BotFather`
 
-Agar mikrokontroler dapat mengirimkan notifikasi langsung ke aplikasi Telegram di HP kamu:
+To enable encrypted HTTPS push notifications from the microcontroller directly to your Telegram client:
 
-1. Buka aplikasi Telegram, cari akun resmi **`@BotFather`** (centang biru), lalu kirim perintah:
+1. Open Telegram, search for the verified **`@BotFather`** account, and send the command:
    ```text
    /newbot
    ```
-2. Masukkan nama tampilan bot (misal: `Kebun Pintar IoT`) dan username bot yang diakhiri kata `bot` (misal: `kebun_pintar_iot_bot`).
-3. **Salin HTTP API Token** yang diberikan oleh `@BotFather` (contoh: `7123456789:AAHxyz1234567890abcdef`), lalu tempelkan ke `TELEGRAM_BOT_TOKEN` di dalam file `secrets.h`.
-4. Klik tautan bot barumu dan tekan tombol **Start** (`/start`) minimal satu kali agar bot diizinkan mengirim pesan kepadamu.
-5. Untuk mengetahui **`TELEGRAM_CHAT_ID`** akun pribadimu:
-   - Cari bot **`@userinfobot`** di Telegram lalu klik **Start**, **ATAU**
-   - Buka URL berikut di browser setelah mengirim pesan ke botmu:
-     `https://api.telegram.org/bot<TOKEN_BOT_KAMU>/getUpdates`
-   - Salin angka pada bagian `"chat":{"id": 123456789}` ke `TELEGRAM_CHAT_ID` di `secrets.h`.
+2. Provide a display name (e.g., `Kebun Pintar IoT`) and a unique username ending in `bot` (e.g., `kebun_pintar_iot_bot`).
+3. Copy the **HTTP API Token** issued by `@BotFather` (e.g., `7123456789:AAHxyz1234567890abcdef`) and assign it to `TELEGRAM_BOT_TOKEN` in `secrets.h`.
+4. Open a chat with your newly created bot and press **Start** (`/start`) at least once to authorize outbound messages.
+5. Retrieve your numeric **`TELEGRAM_CHAT_ID`**:
+   - Message **`@userinfobot`** on Telegram and press **Start**, **OR**
+   - Send a test message to your bot and visit the following URL in a browser:
+     `https://api.telegram.org/bot<YOUR_BOT_TOKEN>/getUpdates`
+   - Copy the integer value inside `"chat":{"id": 123456789}` into `TELEGRAM_CHAT_ID` in `secrets.h`.
 
 ---
 
-## 2. Cara Membuat Discord Webhook (Opsional)
+## 2. Provisioning a Discord Webhook (Optional)
 
-Jika kamu lebih suka menerima notifikasi di server Discord:
+To deliver alerts to a Discord server channel simultaneously or as an alternative to Telegram:
 
-1. Buka **Server Settings > Integrations > Webhooks** pada channel Discord yang diinginkan.
-2. Klik **New Webhook**, beri nama misalnya `Smart Plant Monitor`, lalu klik **Copy Webhook URL**.
-3. Tempelkan URL tersebut ke `DISCORD_WEBHOOK_URL` di dalam file `secrets.h`.
+1. In your Discord server, navigate to **Server Settings > Integrations > Webhooks**.
+2. Click **New Webhook**, name it `Smart Plant Monitor`, select the target channel, and click **Copy Webhook URL**.
+3. Paste the URL into `DISCORD_WEBHOOK_URL` inside `secrets.h`.
 
 ---
 
-## 3. Contoh Output Serial Monitor (115200 baud)
+## 3. UART Serial Monitor Output (`115200` baud)
 
-Berikut contoh log pada **Serial Monitor** ketika kelembapan tanah turun di bawah ambang kering (`< 35%`), memicu pompa menyala, mengirim notifikasi ke Telegram, hingga berhenti otomatis saat tanah kembali lembap (`>= 65%`):
+The following UART log captures a complete closed-loop irrigation cycle: soil moisture drops below the lower hysteresis threshold (`< 35%`), energizing the pump and dispatching a Telegram notification, followed by automatic shutoff once moisture reaches the upper saturation threshold (`>= 65%`) and entry into the 30-second percolation cooldown period:
 
 ```text
 =======================================================
@@ -62,13 +62,13 @@ Berikut contoh log pada **Serial Monitor** ketika kelembapan tanah turun di bawa
 
 ---
 
-## 4. Contoh Pesan Notifikasi yang Diterima di HP
+## 4. Push Notification Payload Examples
 
-### Saat Tanah Kering (Pompa Mulai Menyiram):
+### a. Dry Threshold Breached (Irrigation Started)
 > **[Smart Plant]** Tanah Kering (29% < 35%). Memulai penyiraman otomatis.
 
-### Saat Tanah Sudah Cukup Lembap (Pompa Berhenti):
+### b. Saturation Threshold Reached (Normal Shutoff)
 > **[Smart Plant]** Penyiraman selesai (Target kelembapan >= 65% tercapai). Kelembapan: 29% -> 68%. Durasi: 4 detik. Cooldown aktif 30 detik.
 
-### Saat Durasi Maksimum Tercapai (Pengaman Anti-Banjir):
+### c. Maximum Run-Time Safety Cutoff Triggered (Anti-Overwatering Protection)
 > **[Smart Plant]** Penyiraman selesai (Batas waktu maksimum 15s tercapai). Kelembapan: 25% -> 52%. Durasi: 15 detik. Cooldown aktif 30 detik.

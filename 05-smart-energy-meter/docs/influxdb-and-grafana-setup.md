@@ -1,12 +1,12 @@
-# Panduan Setup InfluxDB v2, Grafana Dashboard & Output Serial Monitor
+# InfluxDB v2 & Grafana Provisioning Guide, Line Protocol Spec & UART Output — 05 Smart Energy Meter
 
-Dokumen ini menjelaskan cara menyiapkan *Time-Series Database* **InfluxDB v2** beserta **Grafana Dashboard** menggunakan Docker, contoh *query* Flux untuk menampilkan grafik daya & estimasi tagihan listrik, serta contoh log Serial Monitor dari **Proyek 05 (`05-smart-energy-meter`)**.
+This document details how to deploy the **InfluxDB v2** time-series database and **Grafana** visualization stack using Docker Compose, provides production **Flux** queries for power and billing dashboards, and documents the UART telemetry format for **Project 05 (`05-smart-energy-meter`)**.
 
 ---
 
-## 1. Contoh Output Serial Monitor (`115200` baud)
+## 1. UART Serial Monitor Output (`115200` baud)
 
-Saat sketch dijalankan pada ESP32 (baik dengan sensor PZEM-004T asli maupun mode simulasi di Wokwi), berikut adalah tampilan pada **Serial Monitor**:
+When the firmware runs on the ESP32 (either connected to a physical PZEM-004T v3.0 module or running in potentiometer simulation mode), the UART console logs:
 
 ```text
 ============================================================
@@ -30,9 +30,9 @@ Saat sketch dijalankan pada ESP32 (baik dengan sensor PZEM-004T asli maupun mode
 
 ---
 
-## 2. Menjalankan InfluxDB v2 & Grafana dengan Docker Compose
+## 2. Deploying InfluxDB v2 & Grafana via Docker Compose
 
-Buat file `docker-compose.yml` di komputer atau server lokal Anda, lalu jalankan `docker compose up -d`:
+Create a `docker-compose.yml` file on your host server or workstation and start the stack with `docker compose up -d`:
 
 ```yaml
 services:
@@ -71,12 +71,12 @@ volumes:
   grafana_data:
 ```
 
-### Langkah Menghubungkan ESP32 ke Stack Docker di Atas:
-1. Jalankan `docker compose up -d`.
-2. Buka **InfluxDB UI** di `http://localhost:8086` (Login: `admin` / `adminpassword123`).
-3. Pada file `secrets.h` di proyek Arduino Anda, sesuaikan nilai berikut:
+### Connecting the ESP32 Node to the Docker Stack:
+1. Run `docker compose up -d`.
+2. Verify **InfluxDB UI** accessibility at `http://localhost:8086` (`admin` / `adminpassword123`).
+3. Update `src/smart_energy_meter/secrets.h` with your host machine's LAN IPv4 address:
    ```cpp
-   #define INFLUXDB_URL    "http://<IP_KOMPUTER_ANDA>:8086"
+   #define INFLUXDB_URL    "http://<YOUR_HOST_LAN_IP>:8086"
    #define INFLUXDB_TOKEN  "iotlab-super-secret-influx-token"
    #define INFLUXDB_ORG    "iot_lab_org"
    #define INFLUXDB_BUCKET "energy_meter"
@@ -84,32 +84,32 @@ volumes:
 
 ---
 
-## 3. Spesifikasi InfluxDB Line Protocol
+## 3. InfluxDB v2 Line Protocol Schema Specification
 
-ESP32 mengirimkan data ke endpoint `POST /api/v2/write?org=iot_lab_org&bucket=energy_meter&precision=s` dengan struktur berikut:
+The ESP32 transmits time-series points to `POST /api/v2/write?org=iot_lab_org&bucket=energy_meter&precision=s` using the following schema:
 
 - **Measurement:** `power_consumption`
-- **Tags:**
-  - `location`: Lokasi panel meter (contoh: `panel_utama`)
-  - `mode`: `hardware` atau `simulation`
-- **Fields:**
-  - `voltage` (Float, Volt)
-  - `current` (Float, Ampere)
-  - `power` (Float, Watt)
-  - `energy_kwh` (Float, kWh)
-  - `frequency` (Float, Hz)
-  - `pf` (Float, Power Factor 0.00 - 1.00)
-  - `cost_idr` (Float, Estimasi Biaya PLN dalam Rupiah)
+- **Indexed Tag Set:**
+  - `location`: Physical sub-panel identifier (default: `panel_utama`)
+  - `mode`: Acquisition source (`hardware` or `simulation`)
+- **Unindexed Field Set:**
+  - `voltage` (`float`, Volts RMS)
+  - `current` (`float`, Amperes RMS)
+  - `power` (`float`, Active Power in Watts)
+  - `energy_kwh` (`float`, Cumulative Energy in kWh)
+  - `frequency` (`float`, AC Line Frequency in Hz)
+  - `pf` (`float`, Power Factor `0.00–1.00`)
+  - `cost_idr` (`float`, Estimated PLN utility cost in IDR)
 
 ---
 
-## 4. Contoh Query Flux untuk Dashboard Grafana
+## 4. Production Flux Queries for Grafana Dashboards
 
-Di **Grafana** (`http://localhost:3000`), tambahkan **Data Source > InfluxDB**, pilih Query Language **Flux**, masukkan URL `http://influxdb:8086`, Organization `iot_lab_org`, Token `iotlab-super-secret-influx-token`, dan Default Bucket `energy_meter`.
+In **Grafana** (`http://localhost:3000`), navigate to **Connections > Data Sources > Add data source > InfluxDB**, set the **Query Language** to **Flux**, set the URL to `http://influxdb:8086`, Organization to `iot_lab_org`, Token to `iotlab-super-secret-influx-token`, and Default Bucket to `energy_meter`.
 
-Gunakan query Flux berikut untuk membuat panel visualisasi:
+Use the following Flux queries to populate your dashboard panels:
 
-### a. Grafik Time-Series Daya Aktif (Watt) & Tegangan (Volt)
+### a. Time-Series Panel: Active Power (Watts) & Line Voltage (Volts)
 ```flux
 from(bucket: "energy_meter")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
@@ -120,7 +120,7 @@ from(bucket: "energy_meter")
   |> yield(name: "mean")
 ```
 
-### b. Panel Gauge / Stat: Akumulasi Konsumsi Energi (kWh) & Tagihan (Rp) Terakhir
+### b. Stat / Gauge Panel: Latest Cumulative Energy (kWh) & Utility Bill (IDR)
 ```flux
 from(bucket: "energy_meter")
   |> range(start: -24h)
@@ -130,7 +130,7 @@ from(bucket: "energy_meter")
   |> last()
 ```
 
-### c. Pemakaian Energi Harian (Selisih kWh per Hari)
+### c. Bar Chart Panel: Daily Energy Consumption Delta (kWh per Day)
 ```flux
 from(bucket: "energy_meter")
   |> range(start: -7d)

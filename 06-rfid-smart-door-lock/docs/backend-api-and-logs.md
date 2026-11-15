@@ -1,12 +1,12 @@
-# Backend REST API (Python FastAPI + SQLite) & Contoh Log Akses
+# FastAPI + SQLite Access Control Backend & Audit Logs — 06 RFID Smart Door Lock
 
-Dokumen ini menyediakan kode siap pakai untuk menjalankan server **Backend Access Log** menggunakan **Python FastAPI** dan database **SQLite**, spesifikasi payload JSON antara ESP32 dan server, serta contoh tampilan **Serial Monitor** pada **Proyek 06 (`06-rfid-smart-door-lock`)**.
+This document provides a production-ready **Python FastAPI** and **SQLite** backend server for central card authorization and audit trail persistence, defines the JSON payload contract between the ESP32 and the server, and presents UART diagnostic logs for **Project 06 (`06-rfid-smart-door-lock`)**.
 
 ---
 
-## 1. Contoh Output Serial Monitor (`115200` baud)
+## 1. UART Serial Monitor Output (`115200` baud)
 
-Berikut contoh log pada **Serial Monitor** ketika kartu Master yang valid ditempelkan, diikuti oleh percobaan tap kartu asing yang tidak terdaftar:
+The following UART console log captures system boot, SNTP time synchronization, an authorized card tap (`A1:B2:C3:D4`) unlocking the solenoid for 4 seconds, and an unauthorized card tap (`DE:AD:BE:EF`) triggering an access denial alarm:
 
 ```text
 ============================================================
@@ -49,11 +49,11 @@ Berikut contoh log pada **Serial Monitor** ketika kartu Master yang valid ditemp
 
 ---
 
-## 2. Skema Tabel Database SQLite (`access_logs.db`)
+## 2. SQLite Relational Schema (`access_logs.db`)
 
-Server backend menyimpan dua tabel utama secara otomatis:
-1. **`authorized_cards`**: Menyimpan daftar UID kartu resmi beserta nama pemilik dan perannya (`ADMIN`, `STAFF`, `MEMBER`).
-2. **`access_logs`**: Menyimpan seluruh riwayat percobaan akses pintu (baik yang diterima maupun yang ditolak).
+The FastAPI backend automatically initializes two relational tables:
+1. **`authorized_cards`**: Stores registered RFID UIDs, cardholder names, role classifications (`ADMIN`, `STAFF`, `MEMBER`), and active status flags.
+2. **`access_logs`**: Immutable append-only audit log recording every physical access attempt (both `GRANTED` and `DENIED`).
 
 ```sql
 CREATE TABLE IF NOT EXISTS authorized_cards (
@@ -76,9 +76,9 @@ CREATE TABLE IF NOT EXISTS access_logs (
 
 ---
 
-## 3. Kode Server Backend Python FastAPI (`server.py`)
+## 3. Python FastAPI Backend Implementation (`server.py`)
 
-Simpan skrip berikut sebagai `server.py` di komputer/server Anda untuk menerima dan memvalidasi log akses dari ESP32:
+Save the following script as `server.py` on your workstation or local server to authenticate card scans and record audit logs from the ESP32:
 
 ```python
 import sqlite3
@@ -121,7 +121,7 @@ def init_db():
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # Seed data awal sesuai Offline Cache di ESP32
+        # Seed initial whitelist matching the ESP32 Offline Cache
         seed_cards = [
             ("A1:B2:C3:D4", "Budi Santoso (Admin Lab)", "ADMIN", 1),
             ("04:5A:8E:92", "Siti Aminah (Asisten)", "STAFF", 1),
@@ -194,10 +194,10 @@ def list_recent_logs(limit: int = 20):
         return [dict(r) for r in cur.fetchall()]
 ```
 
-### Cara Menjalankan Server FastAPI:
+### Launching the FastAPI Server:
 ```bash
 pip install fastapi uvicorn
 uvicorn server:app --host 0.0.0.0 --port 8000
 ```
 
-Setelah server aktif, Anda dapat melihat dokumentasi interaktif Swagger UI di `http://localhost:8000/docs` dan memeriksa riwayat log akses terbaru di `http://localhost:8000/api/v1/logs`.
+Once running, interactive OpenAPI / Swagger documentation is available at `http://localhost:8000/docs` and recent access audit records can be queried via `GET http://localhost:8000/api/v1/logs`.

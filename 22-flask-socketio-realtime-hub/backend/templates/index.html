@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 22 — Flask-SocketIO Full-Duplex Realtime Hub</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="status-dot" id="wsDot"></span>
+      <div>
+        <h1>Flask-SocketIO Full-Duplex Realtime Hub</h1>
+        <p class="subtitle">Zero-Polling Bi-Directional WebSockets &bull; Hardware ISR Buttons &bull; Live RTT Telemetry</p>
+      </div>
+    </div>
+    <div class="badges">
+      <span class="badge" id="rttBadge">WS RTT: -- ms</span>
+      <span class="badge" id="seqBadge">SEQ: #0</span>
+      <span class="badge" id="srcBadge">LAST SRC: --</span>
+      <span class="badge" id="clientsBadge">CLIENTS: 0</span>
+    </div>
+  </header>
+
+  <main class="grid">
+    <!-- Relay Channel 1 -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Relay Channel 1</h2>
+        <span class="pin-pill">ESP32 GPIO 26 / ISR BTN GPIO 18</span>
+      </div>
+      <div class="status-banner" id="bannerCh1">DE-ENERGIZED (OFF)</div>
+      <div class="btn-row">
+        <button class="btn btn-toggle" onclick="toggleFromWeb(1)">Toggle via WebSocket</button>
+        <button class="btn btn-sim" onclick="simulateHwButton(1)">Simulate MCU ISR Button 1</button>
+      </div>
+    </section>
+
+    <!-- Relay Channel 2 -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Relay Channel 2</h2>
+        <span class="pin-pill">ESP32 GPIO 27 / ISR BTN GPIO 19</span>
+      </div>
+      <div class="status-banner" id="bannerCh2">DE-ENERGIZED (OFF)</div>
+      <div class="btn-row">
+        <button class="btn btn-toggle" onclick="toggleFromWeb(2)">Toggle via WebSocket</button>
+        <button class="btn btn-sim" onclick="simulateHwButton(2)">Simulate MCU ISR Button 2</button>
+      </div>
+    </section>
+
+    <!-- Realtime Event Log -->
+    <section class="card full-width">
+      <div class="card-head">
+        <h2>Full-Duplex WebSocket Frame Stream</h2>
+        <button class="btn-small" onclick="measureRttNow()">Measure RTT Ping</button>
+      </div>
+      <div class="event-log" id="eventLog"></div>
+    </section>
+  </main>
+
+  <script>
+    const socket = io({ transports: ['websocket', 'polling'] });
+
+    function appendLog(tag, payload) {
+      const box = document.getElementById('eventLog');
+      const row = document.createElement('div');
+      row.className = 'log-entry';
+      const ts = new Date().toISOString().slice(11, 23);
+      row.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="log-tag">${tag}</span> <code>${JSON.stringify(payload)}</code>`;
+      box.prepend(row);
+      while (box.children.length > 25) {
+        box.removeChild(box.lastChild);
+      }
+    }
+
+    function updateUiState(st) {
+      document.getElementById('seqBadge').textContent = `SEQ: #${st.seq ?? 0}`;
+      document.getElementById('srcBadge').textContent = `LAST SRC: ${st.source || '--'}`;
+      document.getElementById('clientsBadge').textContent = `CLIENTS: ${st.connected_clients ?? 1}`;
+
+      const b1 = document.getElementById('bannerCh1');
+      if (st.relay1 === 1) {
+        b1.textContent = 'ENERGIZED (ON / HIGH)';
+        b1.className = 'status-banner on';
+      } else {
+        b1.textContent = 'DE-ENERGIZED (OFF / LOW)';
+        b1.className = 'status-banner';
+      }
+
+      const b2 = document.getElementById('bannerCh2');
+      if (st.relay2 === 1) {
+        b2.textContent = 'ENERGIZED (ON / HIGH)';
+        b2.className = 'status-banner on';
+      } else {
+        b2.textContent = 'DE-ENERGIZED (OFF / LOW)';
+        b2.className = 'status-banner';
+      }
+    }
+
+    socket.on('connect', () => {
+      document.getElementById('wsDot').className = 'status-dot online';
+      appendLog('WS_CONNECTED', { sid: socket.id });
+      measureRttNow();
+    });
+
+    socket.on('disconnect', () => {
+      document.getElementById('wsDot').className = 'status-dot offline';
+      appendLog('WS_DISCONNECTED', {});
+    });
+
+    socket.on('device_state_update', (data) => {
+      updateUiState(data);
+      appendLog('device_state_update', data);
+    });
+
+    socket.on('pong_latency', (data) => {
+      const rtt = (performance.now() - data.client_t0).toFixed(2);
+      document.getElementById('rttBadge').textContent = `WS RTT: ${rtt} ms`;
+    });
+
+    function toggleFromWeb(channel) {
+      socket.emit('web_toggle_relay', { channel });
+    }
+
+    async function simulateHwButton(channel) {
+      await fetch('/api/simulate/hw_button', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel })
+      });
+    }
+
+    function measureRttNow() {
+      socket.emit('ping_latency', { client_t0: performance.now() });
+    }
+
+    setInterval(measureRttNow, 2500);
+  </script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "author": "IoT Engineering Lab — Track II TinyML",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "board-esp32-devkit-c-v4",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "board-ssd1306",
+      "id": "oled1",
+      "top": -40,
+      "left": 180,
+      "attrs": {
+        "i2cAddress": "0x3c"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_nyalakan",
+      "top": 20,
+      "left": -150,
+      "attrs": {
+        "color": "green",
+        "label": "Voice: NYALAKAN"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_matikan",
+      "top": 90,
+      "left": -150,
+      "attrs": {
+        "color": "red",
+        "label": "Voice: MATIKAN"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_status",
+      "top": 160,
+      "left": -150,
+      "attrs": {
+        "color": "blue",
+        "label": "Voice: STATUS"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": 110,
+      "left": 190,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": 210,
+      "left": 190,
+      "attrs": {
+        "color": "emerald",
+        "label": "Load Indicator"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r1",
+      "top": 250,
+      "left": 190,
+      "attrs": {
+        "value": "220"
+      }
+    }
+  ],
+  "connections": [
+    ["esp:TX", "$serialMonitor:RX", "", []],
+    ["esp:RX", "$serialMonitor:TX", "", []],
+    ["oled1:GND", "esp:GND.2", "black", ["v0"]],
+    ["oled1:VCC", "esp:3V3", "red", ["v0"]],
+    ["oled1:SDA", "esp:21", "cyan", ["v0"]],
+    ["oled1:SCL", "esp:22", "yellow", ["v0"]],
+    ["btn_nyalakan:1.l", "esp:12", "green", ["v0"]],
+    ["btn_nyalakan:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_matikan:1.l", "esp:14", "red", ["v0"]],
+    ["btn_matikan:2.r", "esp:GND.1", "black", ["v0"]],
+    ["btn_status:1.l", "esp:27", "blue", ["v0"]],
+    ["btn_status:2.r", "esp:GND.1", "black", ["v0"]],
+    ["relay1:VCC", "esp:5V", "red", ["v0"]],
+    ["relay1:GND", "esp:GND.2", "black", ["v0"]],
+    ["relay1:IN", "esp:4", "orange", ["v0"]],
+    ["esp:2", "led1:A", "green", ["v0"]],
+    ["led1:C", "r1:1", "black", ["v0"]],
+    ["r1:2", "esp:GND.2", "black", ["v0"]]
+  ],
+  "dependencies": {}
+}

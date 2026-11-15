@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "author": "IoT Lab Track II - Classical TinyML",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_mq135",
+      "top": -50,
+      "left": -170,
+      "attrs": {
+        "value": "1100",
+        "label": "MQ-135 (VOC/NH3/Smoke)"
+      }
+    },
+    {
+      "type": "wokwi-potentiometer",
+      "id": "pot_mq2",
+      "top": 60,
+      "left": -170,
+      "attrs": {
+        "value": "1550",
+        "label": "MQ-2 (LPG/Propane/Smoke)"
+      }
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": 170,
+      "left": -160,
+      "attrs": {
+        "temperature": "24.5",
+        "humidity": "55.0"
+      }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": -60,
+      "left": 180,
+      "attrs": {
+        "volume": "0.2"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_clean",
+      "top": 40,
+      "left": 180,
+      "attrs": {
+        "color": "green",
+        "label": "CLEAN AIR"
+      }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led_hazard",
+      "top": 95,
+      "left": 180,
+      "attrs": {
+        "color": "red",
+        "label": "GAS HAZARD"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_clean",
+      "top": 65,
+      "left": 135,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_hazard",
+      "top": 120,
+      "left": 135,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_calib",
+      "top": 175,
+      "left": 170,
+      "attrs": {
+        "color": "blue",
+        "label": "Calibrate R0"
+      }
+    }
+  ],
+  "connections": [
+    [ "esp:3V3", "pot_mq135:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "pot_mq135:GND", "black", [ "h0" ] ],
+    [ "esp:D34", "pot_mq135:SIG", "orange", [ "h0" ] ],
+    [ "esp:3V3", "pot_mq2:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "pot_mq2:GND", "black", [ "h0" ] ],
+    [ "esp:D35", "pot_mq2:SIG", "cyan", [ "h0" ] ],
+    [ "esp:3V3", "dht1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "dht1:GND", "black", [ "h0" ] ],
+    [ "esp:D4", "dht1:SDA", "green", [ "h0" ] ],
+    [ "esp:D18", "bz1:2", "yellow", [ "h0" ] ],
+    [ "esp:GND.1", "bz1:1", "black", [ "h0" ] ],
+    [ "esp:D19", "r_clean:1", "green", [ "h0" ] ],
+    [ "r_clean:2", "led_clean:A", "green", [ "h0" ] ],
+    [ "led_clean:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D23", "r_hazard:1", "red", [ "h0" ] ],
+    [ "r_hazard:2", "led_hazard:A", "red", [ "h0" ] ],
+    [ "led_hazard:C", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:D15", "btn_calib:1.l", "blue", [ "h0" ] ],
+    [ "esp:GND.1", "btn_calib:2.r", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

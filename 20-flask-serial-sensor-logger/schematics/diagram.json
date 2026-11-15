@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "author": "IoT Lab Track III",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 40,
+      "left": 20,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-dht22",
+      "id": "dht1",
+      "top": -50,
+      "left": 330,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-photoresistor-sensor",
+      "id": "ldr1",
+      "top": 120,
+      "left": 330,
+      "attrs": {}
+    }
+  ],
+  "connections": [
+    [ "uno:5V", "dht1:VCC", "red", [ "v0" ] ],
+    [ "uno:GND.1", "dht1:GND", "black", [ "v0" ] ],
+    [ "uno:2", "dht1:SDA", "green", [ "v0" ] ],
+    [ "uno:5V", "ldr1:VCC", "red", [ "v0" ] ],
+    [ "uno:GND.2", "ldr1:GND", "black", [ "v0" ] ],
+    [ "uno:A0", "ldr1:AO", "yellow", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

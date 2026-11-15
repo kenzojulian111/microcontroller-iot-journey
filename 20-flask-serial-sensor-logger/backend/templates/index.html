@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Project 20 — Serial Telemetry Logger &amp; SQLite Historian</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="status-dot online" id="statusDot"></span>
+      <div>
+        <h1>Serial Telemetry Historian &amp; SQLite WAL Logger</h1>
+        <p class="subtitle">Continuous NDJSON UART Ingestion &bull; SQLite3 WAL Persistence &bull; RFC-4180 CSV Export</p>
+      </div>
+    </div>
+    <div class="actions">
+      <span class="badge" id="modeBadge">MODE: --</span>
+      <span class="badge" id="countBadge">ROWS: 0</span>
+      <a class="btn-export" href="/api/export/csv">&#11015; Export RFC-4180 CSV</a>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Temperature (DHT22)</span>
+        <div class="kpi-value" id="valTemp">-- &deg;C</div>
+        <div class="kpi-sub" id="statTemp">Min: -- | Avg: -- | Max: --</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Relative Humidity</span>
+        <div class="kpi-value" id="valHum">-- %</div>
+        <div class="kpi-sub" id="statHum">Min: -- | Avg: -- | Max: --</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Ambient Light (10-bit ADC)</span>
+        <div class="kpi-value" id="valLux">-- <small>/ 1023</small></div>
+        <div class="kpi-sub" id="statLux">Min: -- | Avg: -- | Max: --</div>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">ADC Node Voltage</span>
+        <div class="kpi-value" id="valVolt">-- V</div>
+        <div class="kpi-sub" id="statSeq">Last Frame Seq: #0</div>
+      </div>
+    </section>
+
+    <section class="table-card">
+      <div class="table-header">
+        <h2>Recent SQLite Telemetry Records (Live Poll 2.0 s)</h2>
+        <span class="mono-note">PRAGMA journal_mode = WAL</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Row ID</th>
+              <th>UTC Timestamp (ISO-8601)</th>
+              <th>Seq #</th>
+              <th>Temp (&deg;C)</th>
+              <th>Humidity (%)</th>
+              <th>LDR Raw (0–1023)</th>
+              <th>ADC Voltage (V)</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="telemetryBody">
+            <tr><td colspan="8">Loading telemetry history...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    async function refreshTelemetry() {
+      try {
+        const [latestRes, histRes] = await Promise.all([
+          fetch('/api/telemetry/latest'),
+          fetch('/api/telemetry/history?limit=25')
+        ]);
+        const latestData = await latestRes.json();
+        const histData = await histRes.json();
+
+        document.getElementById('modeBadge').textContent = `MODE: ${latestData.mode} (${latestData.port})`;
+        const stats = latestData.stats || {};
+        document.getElementById('countBadge').textContent = `ROWS: ${stats.total_count ?? 0}`;
+
+        if (latestData.latest) {
+          const cur = latestData.latest;
+          document.getElementById('valTemp').innerHTML = `${cur.temp_c.toFixed(2)} &deg;C`;
+          document.getElementById('valHum').textContent = `${cur.hum_pct.toFixed(2)} %`;
+          document.getElementById('valLux').innerHTML = `${cur.lux_raw} <small>/ 1023</small>`;
+          document.getElementById('valVolt').textContent = `${cur.v_adc.toFixed(3)} V`;
+          document.getElementById('statSeq').textContent = `Last Frame Seq: #${cur.seq}`;
+        }
+
+        document.getElementById('statTemp').textContent =
+          `Min: ${stats.temp_min ?? '--'}°C | Avg: ${stats.temp_avg ?? '--'}°C | Max: ${stats.temp_max ?? '--'}°C`;
+        document.getElementById('statHum').textContent =
+          `Min: ${stats.hum_min ?? '--'}% | Avg: ${stats.hum_avg ?? '--'}% | Max: ${stats.hum_max ?? '--'}%`;
+        document.getElementById('statLux').textContent =
+          `Min: ${stats.lux_min ?? '--'} | Avg: ${stats.lux_avg ?? '--'} | Max: ${stats.lux_max ?? '--'}`;
+
+        const tbody = document.getElementById('telemetryBody');
+        if (histData.records && histData.records.length > 0) {
+          tbody.innerHTML = histData.records.map(r => `
+            <tr>
+              <td>${r.id}</td>
+              <td>${r.ts_utc}</td>
+              <td>#${r.seq}</td>
+              <td>${Number(r.temp_c).toFixed(2)}</td>
+              <td>${Number(r.hum_pct).toFixed(2)}</td>
+              <td>${r.lux_raw}</td>
+              <td>${Number(r.v_adc).toFixed(3)}</td>
+              <td><span class="src-pill">${r.source}</span></td>
+            </tr>
+          `).join('');
+        }
+      } catch (e) {
+        console.error('Telemetry poll error:', e);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      refreshTelemetry();
+      setInterval(refreshTelemetry, 2000);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "author": "IoT Lab Track II - Classical TinyML",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 0,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-mpu6050",
+      "id": "imu1",
+      "top": -30,
+      "left": -160,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-rgb-led",
+      "id": "rgb1",
+      "top": -50,
+      "left": 180,
+      "attrs": {
+        "common": "cathode"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_red",
+      "top": 20,
+      "left": 140,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_green",
+      "top": 45,
+      "left": 140,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-resistor",
+      "id": "r_blue",
+      "top": 70,
+      "left": 140,
+      "attrs": {
+        "value": "220"
+      }
+    },
+    {
+      "type": "wokwi-relay-module",
+      "id": "relay1",
+      "top": 120,
+      "left": 170,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn_demo",
+      "top": 140,
+      "left": -150,
+      "attrs": {
+        "color": "green",
+        "label": "Trigger Air Gesture"
+      }
+    }
+  ],
+  "connections": [
+    [ "esp:3V3", "imu1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.2", "imu1:GND", "black", [ "h0" ] ],
+    [ "esp:D21", "imu1:SDA", "blue", [ "h0" ] ],
+    [ "esp:D22", "imu1:SCL", "yellow", [ "h0" ] ],
+    [ "esp:D25", "r_red:1", "red", [ "h0" ] ],
+    [ "r_red:2", "rgb1:R", "red", [ "h0" ] ],
+    [ "esp:D26", "r_green:1", "green", [ "h0" ] ],
+    [ "r_green:2", "rgb1:G", "green", [ "h0" ] ],
+    [ "esp:D27", "r_blue:1", "blue", [ "h0" ] ],
+    [ "r_blue:2", "rgb1:B", "blue", [ "h0" ] ],
+    [ "rgb1:COM", "esp:GND.1", "black", [ "h0" ] ],
+    [ "esp:3V3", "relay1:VCC", "red", [ "h0" ] ],
+    [ "esp:GND.1", "relay1:GND", "black", [ "h0" ] ],
+    [ "esp:D14", "relay1:IN", "orange", [ "h0" ] ],
+    [ "esp:D15", "btn_demo:1.l", "green", [ "h0" ] ],
+    [ "esp:GND.2", "btn_demo:2.r", "black", [ "h0" ] ]
+  ],
+  "dependencies": {}
+}

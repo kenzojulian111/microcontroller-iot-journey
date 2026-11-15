@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "author": "Kenzo Julian — IoT Lab Track III",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 20,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-servo",
+      "id": "servoGate",
+      "top": -115,
+      "left": 210,
+      "attrs": { "horn": "single" }
+    },
+    {
+      "type": "wokwi-hc-sr04",
+      "id": "ultrasonic1",
+      "top": -135,
+      "left": -40,
+      "attrs": { "distance": "120" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledRed",
+      "top": -60,
+      "left": -150,
+      "attrs": { "color": "red", "label": "STOP (CLOSED)" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "ledGreen",
+      "top": 0,
+      "left": -150,
+      "attrs": { "color": "green", "label": "GO (OPEN)" }
+    },
+    {
+      "type": "wokwi-buzzer",
+      "id": "bz1",
+      "top": 60,
+      "left": 285,
+      "attrs": { "volume": "0.1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btnManual",
+      "top": 90,
+      "left": -155,
+      "attrs": { "color": "green", "label": "Manual Gate Toggle" }
+    }
+  ],
+  "connections": [
+    [ "servoGate:PWM", "uno:9", "orange", [ "v0" ] ],
+    [ "servoGate:V+", "uno:5V", "red", [ "v0" ] ],
+    [ "servoGate:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonic1:VCC", "uno:5V", "red", [ "v0" ] ],
+    [ "ultrasonic1:GND", "uno:GND.1", "black", [ "v0" ] ],
+    [ "ultrasonic1:TRIG", "uno:10", "yellow", [ "v0" ] ],
+    [ "ultrasonic1:ECHO", "uno:11", "blue", [ "v0" ] ],
+    [ "ledRed:A", "uno:4", "red", [ "v0" ] ],
+    [ "ledRed:C", "uno:GND.2", "black", [ "v0" ] ],
+    [ "ledGreen:A", "uno:5", "green", [ "v0" ] ],
+    [ "ledGreen:C", "uno:GND.2", "black", [ "v0" ] ],
+    [ "bz1:1", "uno:GND.1", "black", [ "v0" ] ],
+    [ "bz1:2", "uno:8", "purple", [ "v0" ] ],
+    [ "btnManual:1.l", "uno:2", "green", [ "v0" ] ],
+    [ "btnManual:2.l", "uno:GND.2", "black", [ "v0" ] ]
+  ],
+  "dependencies": {}
+}

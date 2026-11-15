@@ -1,52 +1,52 @@
-# Panduan Workflow Pelatihan TinyML di Edge Impulse Studio & Output Serial
+# Edge Impulse Studio Training Workflow & UART Inference Telemetry — 09 Edge AI Anomaly Detection
 
-Proyek ini sudah dilengkapi model inferensi bawaan di [`anomaly_model.h`](../src/edge_ai_anomaly_detection/anomaly_model.h) yang langsung dapat dikompilasi dan diuji tanpa instalasi tambahan. Namun, jika Anda ingin melatih model **TinyML** khusus untuk profil getaran mesin Anda sendiri menggunakan **Edge Impulse Studio**, ikuti langkah-langkah di bawah ini.
+This project ships with a pre-trained, zero-dependency DSP feature extractor and Dual-Head TinyML model inside [`anomaly_model.h`](../src/edge_ai_anomaly_detection/anomaly_model.h) that compiles and runs out-of-the-box. If you wish to train a custom **TinyML** model tailored to the specific acoustic/vibration signature of your own machinery using **Edge Impulse Studio**, follow the end-to-end engineering workflow below.
 
 ---
 
-## 1. Langkah demi Langkah Melatih Model di Edge Impulse
+## 1. End-to-End Custom TinyML Training Workflow in Edge Impulse
 
-### Langkah 1 — Mengaktifkan Mode CSV Data Forwarder pada ESP32
-1. Unggah sketch [`edge_ai_anomaly_detection.ino`](../src/edge_ai_anomaly_detection/edge_ai_anomaly_detection.ino) ke ESP32.
-2. Buka **Serial Monitor (`115200` baud)**, ketik huruf **`m`** lalu tekan **Enter** untuk beralih ke **Mode CSV Data Forwarder**.
-3. ESP32 akan mulai mengirimkan baris CSV `ax,ay,az` dengan frekuensi tepat **100 Hz**:
+### Step 1 — Enable the 100 Hz CSV Data Forwarder Mode on the ESP32
+1. Flash [`edge_ai_anomaly_detection.ino`](../src/edge_ai_anomaly_detection/edge_ai_anomaly_detection.ino) onto your ESP32.
+2. Open the **Serial Monitor (`115200` baud)**, type **`m`**, and press **Enter** to switch from Inference Mode to **CSV Data Forwarder Mode**.
+3. The ESP32 immediately begins streaming tri-axial acceleration rows (`ax,ay,az` in $\text{m/s}^2$) at a deterministic **100 Hz** sample rate:
    ```text
    ax,ay,az
    0.120,-0.085,9.812
    0.145,-0.092,9.798
    ...
    ```
-4. Tutup Serial Monitor Arduino IDE (agar port serial tidak terkunci), lalu jalankan CLI Edge Impulse di terminal laptop Anda:
+4. Close the Arduino IDE Serial Monitor (to release the serial port lock) and launch the Edge Impulse CLI forwarder on your workstation:
    ```bash
    edge-impulse-data-forwarder --frequency 100
    ```
-5. Beri nama sumbu `accX, accY, accZ` ketika diminta oleh CLI.
+5. Assign the sensor axis labels `accX, accY, accZ` when prompted by the CLI.
 
-### Langkah 2 — Mengumpulkan Dataset untuk 3 Kondisi Mesin
-Di dashboard **Edge Impulse Studio > Data acquisition**, rekam sampel berdurasi masing-masing **10 detik** (total minimal 2–3 menit data) untuk setiap label berikut:
-1. **`IDLE`**: Mesin dalam keadaan mati.
-2. **`NORMAL_OPERATION`**: Mesin/kipas menyala normal pada kecepatan kerja standar.
-3. **`ANOMALY_DETECTED`**: Tempelkan beban tidak seimbang (misalnya koin/penjepit kertas pada salah satu bilah kipas) atau longgarkan dudukan baut untuk menyimulasikan kerusakan mekanis.
+### Step 2 — Acquire Labeled Vibration Datasets Across 3 Operating Regimes
+In **Edge Impulse Studio > Data acquisition**, record **10-second windows** (minimum 2–3 minutes of total data across training and test splits) for each operating class:
+1. **`IDLE`**: Machine de-energized / stationary ambient baseline.
+2. **`NORMAL_OPERATION`**: Motor, fan, or pump operating under nominal speed and balanced load.
+3. **`ANOMALY_DETECTED`**: Induce a controlled mechanical fault (e.g., attach an eccentric mass such as a coin or binder clip to one fan blade to create rotor unbalance, loosen a mounting bolt, or introduce rhythmic mechanical tapping on the bearing housing).
 
-### Langkah 3 — Merancang Impulse (DSP + Neural Network + Anomaly Detection)
-Pada menu **Impulse design > Create impulse**:
-1. **Time series data**:
-   - *Window size*: `640 ms`
-   - *Window increase (stride)*: `320 ms`
+### Step 3 — Impulse Architecture Design (DSP + Neural Classifier + K-Means Anomaly)
+Navigate to **Impulse design > Create impulse** and configure the blocks:
+1. **Time-Series Input Block**:
+   - *Window size*: `640 ms` (64 samples)
+   - *Window increase (stride)*: `320 ms` (50% overlap)
    - *Frequency*: `100 Hz`
-2. **Processing block (DSP)**: Pilih **Spectral Analysis** (menghitung RMS, Skewness, Kurtosis, dan puncak FFT otomatis).
-3. **Learning block 1**: Pilih **Classification (Keras)** untuk membedakan `IDLE`, `NORMAL_OPERATION`, dan `ANOMALY_DETECTED`.
-4. **Learning block 2**: Pilih **Anomaly Detection (K-means)** pada sumbu RMS untuk mendeteksi pola getaran asing yang belum pernah terlihat saat pelatihan.
+2. **Processing Block (DSP)**: Select **Spectral Analysis** (automatically extracts per-axis RMS, Skewness, Kurtosis, and FFT spectral power bins after high-pass DC removal).
+3. **Learning Block 1 (Supervised)**: Select **Classification (Keras)** with a compact fully connected topology (`16 -> 8 -> 3 Softmax`) to classify `IDLE`, `NORMAL_OPERATION`, and `ANOMALY_DETECTED`.
+4. **Learning Block 2 (Unsupervised)**: Select **Anomaly Detection (K-means / Gaussian Mixture)** on the RMS and spectral power axes to catch novel fault modes outside the training distribution.
 
-### Langkah 4 — Ekspor ke Library Arduino IDE
-1. Buka menu **Deployment**, pilih **Arduino library**, aktifkan **Quantized (int8)** atau **Unoptimized (float32)**, lalu klik **Build**.
-2. Di Arduino IDE, impor file `.zip` hasil unduhan melalui menu **`Sketch > Include Library > Add .ZIP Library...`**.
+### Step 4 — C++ Library Export & Deployment
+1. Open the **Deployment** tab, select **Arduino library**, choose either **Quantized (`int8`)** or **Unoptimized (`float32`)**, and click **Build**.
+2. Import the downloaded `.zip` archive into Arduino IDE via **`Sketch > Include Library > Add .ZIP Library...`**.
 
 ---
 
-## 2. Contoh Output Serial Monitor (`115200` baud)
+## 2. UART Serial Monitor Output (`115200` baud)
 
-Berikut adalah tampilan log pada Serial Monitor ketika menguji ketiga kondisi operasi mesin (baik menggunakan getaran fisik pada MPU6050 maupun menekan tombol simulasi pada `GPIO 14`):
+The following UART console log demonstrates real-time Edge AI inference across all three machine states (`IDLE`, `NORMAL_OPERATION`, and `ANOMALY_DETECTED`) triggered via the `GPIO 14` push button or UART commands:
 
 ```text
 ======================================================================
@@ -71,4 +71,5 @@ Berikut adalah tampilan log pada Serial Monitor ketika menguji ketiga kondisi op
 [EDGE-AI] Status: ANOMALY_DETECTED  | AnomalyScore: 2.48 | Conf(I/N/A): 0%/1%/99%  | RMS: 4.52 m/s2 | P2P: 11.84 | Crest: 3.12 | DSP+NN: 171+41 us
 [EDGE-AI] Status: ANOMALY_DETECTED  | AnomalyScore: 2.61 | Conf(I/N/A): 0%/1%/99%  | RMS: 4.68 m/s2 | P2P: 12.30 | Crest: 3.25 | DSP+NN: 169+38 us
 ```
-Perhatikan betapa cepatnya waktu eksekusi di ESP32: proses ekstraksi fitur DSP 64 sampel 3-sumbu hanya membutuhkan **~168 mikrodetik (`0.168 ms`)** dan inferensi klasifikasi + skor anomali hanya membutuhkan **~38 mikrodetik (`0.038 ms`)**!
+
+Observe the deterministic execution profile on the ESP32 (`DSP+NN` column): computing DC removal and 17 time-domain features across 192 floating-point values takes only **~168 microseconds (`0.168 ms`)**, while evaluating the Dual-Head Softmax + Mahalanobis model takes **~38 microseconds (`0.038 ms`)**—leaving over **99.9% of CPU capacity** available for wireless telemetry and control tasks.
